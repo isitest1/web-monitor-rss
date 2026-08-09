@@ -180,8 +180,9 @@ async function handleSuccess(
   }
 
   const changedSelectionIds = diffSelectionIds(priorState?.currentValue ?? null, request.values);
+  const changeId = generateId();
   const change = await insertChange(db, {
-    id: generateId(),
+    id: changeId,
     feedId: monitor.feedId,
     monitorId: monitor.id,
     detectedAt: now,
@@ -190,7 +191,7 @@ async function handleSuccess(
     newValue: request.values,
     changedSelectionIds,
     changeFingerprint: fingerprint,
-    guid: `urn:web-monitor:change:${generateId()}`,
+    guid: `urn:web-monitor:change:${changeId}`,
     sourceUrl: monitor.url,
   });
 

@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
-import { createMonitorRequestSchema, updateMonitorRequestSchema } from '@web-monitor/shared';
+import {
+  createMonitorRequestSchema,
+  isBlockedMonitorHostname,
+  updateMonitorRequestSchema,
+} from '@web-monitor/shared';
 import type { Env } from '../env.js';
 import { errorJson, requireParam } from '../lib/errors.js';
 import { generateId } from '../lib/ids.js';
@@ -36,6 +40,11 @@ export const monitorRoutes = new Hono<{
   Variables: { actor: Actor };
 }>();
 
+function isMonitorUrlAllowed(env: Env, url: string): boolean {
+  if (env.ALLOW_PRIVATE_MONITOR_URLS === 'true') return true;
+  return !isBlockedMonitorHostname(url);
+}
+
 // Both the admin UI (cookie session) and the Chrome extension (Extension
 // API token) manage Monitor definitions, per §4/§10.
 monitorRoutes.use('*', requireAdminOrExtensionAuth);
@@ -70,6 +79,9 @@ monitorRoutes.post('/', requireCsrfForAdmin, async (c) => {
   const feed = await getFeedById(c.env.DB, parsed.data.feedId);
   if (!feed)
     return errorJson(c, 400, 'INVALID_REQUEST', 'feedId does not reference an existing feed');
+  if (!isMonitorUrlAllowed(c.env, parsed.data.url)) {
+    return errorJson(c, 400, 'INVALID_REQUEST', 'URL is not allowed');
+  }
 
   const now = nowIso();
   const monitor = await insertMonitor(c.env.DB, {
@@ -111,6 +123,9 @@ monitorRoutes.put('/:id', requireCsrfForAdmin, async (c) => {
   }
   const existing = await getMonitorById(c.env.DB, requireParam(c, 'id'));
   if (!existing) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
+  if (parsed.data.url && !isMonitorUrlAllowed(c.env, parsed.data.url)) {
+    return errorJson(c, 400, 'INVALID_REQUEST', 'URL is not allowed');
+  }
 
   const now = nowIso();
   const { selections, ...monitorPatch } = parsed.data;

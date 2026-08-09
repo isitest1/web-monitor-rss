@@ -28,8 +28,9 @@ export async function createSystemEvent(
     input.key,
     input.now,
   );
+  const changeId = generateId();
   const change = await insertChange(db, {
-    id: generateId(),
+    id: changeId,
     feedId: systemFeed.id,
     monitorId: input.monitorId,
     detectedAt: input.now,
@@ -45,7 +46,7 @@ export async function createSystemEvent(
     ],
     changedSelectionIds: [],
     changeFingerprint: fingerprint,
-    guid: `urn:web-monitor:system:${generateId()}`,
+    guid: `urn:web-monitor:system:${changeId}`,
     sourceUrl: input.sourceUrl,
   });
   return change.id;

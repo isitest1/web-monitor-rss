@@ -22,24 +22,38 @@ const BLOCKED_HOSTNAME_PATTERNS = [
   /^169\.254\.169\.254$/,
 ];
 
-export function isAllowedMonitorUrl(rawUrl: string): boolean {
+function hasAllowedProtocol(rawUrl: string): boolean {
+  try {
+    const protocol = new URL(rawUrl).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True if the URL's hostname is localhost/loopback/private/link-local/
+ * metadata-service, per §13's SSRF guard. Split out from the base schema
+ * (which only enforces http/https shape) so the Worker route layer can
+ * apply this check with an explicit, env-gated bypass for local
+ * integration testing against fixture servers — production config never
+ * sets that bypass, so real requests are unaffected.
+ */
+export function isBlockedMonitorHostname(rawUrl: string): boolean {
   let url: URL;
   try {
     url = new URL(rawUrl);
   } catch {
-    return false;
+    return true;
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
-  const hostname = url.hostname;
-  if (BLOCKED_HOSTNAME_PATTERNS.some((pattern) => pattern.test(hostname))) return false;
-  return true;
+  return BLOCKED_HOSTNAME_PATTERNS.some((pattern) => pattern.test(url.hostname));
 }
 
 export const monitorUrlSchema = z
   .string()
   .url()
   .max(2000)
-  .refine(isAllowedMonitorUrl, { message: 'URL is not allowed' });
+  .refine(hasAllowedProtocol, { message: 'URL must use http or https' });
 
 export const monitorSchema = z.object({
   id: z.string(),

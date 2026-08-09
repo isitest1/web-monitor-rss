@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 .wrangler/
+.wrangler-e2e-state/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

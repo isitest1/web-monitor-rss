@@ -68,6 +68,29 @@ describe('monitor result processing and change detection', () => {
     selectionId = monitor.selections[0]!.id;
   });
 
+  it('rejects a monitor URL pointing at localhost/private hosts by default', async () => {
+    const admin = await loginAsAdmin(env);
+    for (const url of [
+      'http://localhost:4173/static.html',
+      'http://127.0.0.1/admin',
+      'http://169.254.169.254/latest/meta-data',
+      'http://192.168.1.1/',
+    ]) {
+      const res = await admin.request('/api/monitors', {
+        method: 'POST',
+        body: JSON.stringify({
+          feedId: feed.id,
+          name: '拒否されるはず',
+          url,
+          selections: [
+            { label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+          ],
+        }),
+      });
+      expect(res.status).toBe(400);
+    }
+  });
+
   it('exposes the monitor to the runner via GET /api/runner/monitors', async () => {
     const res = await runnerRequest('/api/runner/monitors');
     expect(res.status).toBe(200);
@@ -142,7 +165,10 @@ describe('monitor result processing and change detection', () => {
     expect(xml).toContain('<item>');
     expect(xml).toContain('こんにちは');
     expect(xml).toContain('さようなら');
-    expect(xml).toContain('urn:web-monitor:change:');
+    // The GUID must be derived from the same id returned as changeId, not
+    // an unrelated random value, so RSS readers and API callers agree on
+    // which change this is.
+    expect(xml).toContain(`urn:web-monitor:change:${body.changeId}`);
   });
 
   it('does not insert a second change row when the same A->B transition is reprocessed', async () => {
