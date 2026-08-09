@@ -8,10 +8,8 @@ const statusEl = document.getElementById('status') as HTMLParagraphElement;
 
 async function loadExisting(): Promise<void> {
   const config = await getConfig();
-  if (config) {
-    apiBaseUrlInput.value = config.apiBaseUrl;
-    extensionTokenInput.value = config.extensionToken;
-  }
+  apiBaseUrlInput.value = config.apiBaseUrl;
+  extensionTokenInput.value = config.extensionToken;
 }
 
 form.addEventListener('submit', async (event) => {

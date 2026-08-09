@@ -7,7 +7,7 @@ export interface ExtensionConfig {
 
 const STORAGE_KEY = 'webMonitorConfig';
 
-export async function getConfig(): Promise<ExtensionConfig | null> {
+export async function getConfig(): Promise<ExtensionConfig> {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   const value = stored[STORAGE_KEY] as ExtensionConfig | undefined;
   if (value?.apiBaseUrl && value.extensionToken) return value;
