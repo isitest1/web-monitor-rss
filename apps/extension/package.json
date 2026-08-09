@@ -1,0 +1,27 @@
+{
+  "name": "@web-monitor/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "pretest:e2e": "node scripts/build.mjs",
+    "test:e2e": "playwright test -c playwright.config.ts"
+  },
+  "dependencies": {
+    "@web-monitor/selector-engine": "workspace:*",
+    "@web-monitor/shared": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.10.7",
+    "@web-monitor/test-fixtures": "workspace:*",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Web Monitor RSS - 設定</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 480px;
+        margin: 2rem auto;
+        color: #1a1a1a;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-size: 13px;
+      }
+      input {
+        width: 100%;
+        padding: 6px;
+        margin-top: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #1a1a1a;
+        color: #fff;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 1rem;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Web Monitor RSS 設定</h1>
+    <p>
+      Chrome拡張機能がWorker
+      APIへ接続するための設定です。トークン値はこの拡張機能のローカルストレージにのみ保存されます。
+    </p>
+    <form id="config-form">
+      <label>
+        Worker API base URL
+        <input
+          type="url"
+          id="apiBaseUrl"
+          placeholder="https://your-worker.example.workers.dev"
+          required
+        />
+      </label>
+      <label>
+        Extension APIトークン
+        <input type="password" id="extensionToken" required />
+      </label>
+      <button type="submit">保存</button>
+      <button type="button" id="test-connection">接続を確認</button>
+    </form>
+    <p id="status"></p>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Web Monitor RSS - Visual Selector",
+  "version": "0.1.0",
+  "description": "個人用Webページ監視サービスのVisual Selector拡張機能",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

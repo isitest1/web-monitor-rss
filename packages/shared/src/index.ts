@@ -1,4 +1,5 @@
 export * from './status-codes.js';
+export * from './status-label.js';
 export * from './normalize.js';
 export * from './schemas/feed.js';
 export * from './schemas/selection.js';

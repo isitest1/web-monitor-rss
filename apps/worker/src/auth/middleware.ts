@@ -36,7 +36,10 @@ export function requireRunnerToken(
  * API token — feed lifecycle/RSS token management stays an admin-panel
  * concern (§12).
  */
-export async function requireAdminOnlyAuth(c: Context<ActorEnv>, next: Next): Promise<Response | void> {
+export async function requireAdminOnlyAuth(
+  c: Context<ActorEnv>,
+  next: Next,
+): Promise<Response | void> {
   const session = await getAdminSessionRow(c);
   if (!session) {
     return errorJson(c, 401, 'UNAUTHENTICATED', 'admin session is required');
@@ -75,7 +78,10 @@ export async function requireAdminOrExtensionAuth(
  * requires the caller to have deliberately attached it, so extension
  * requests are inherently not CSRF-able and skip this check.
  */
-export async function requireCsrfForAdmin(c: Context<ActorEnv>, next: Next): Promise<Response | void> {
+export async function requireCsrfForAdmin(
+  c: Context<ActorEnv>,
+  next: Next,
+): Promise<Response | void> {
   const actor = c.get('actor');
   if (actor.type === 'extension') {
     await next();
