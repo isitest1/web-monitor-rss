@@ -1,0 +1,27 @@
+{
+  "name": "@web-monitor/selector-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "pretest:e2e": "node scripts/build-test-bundle.mjs",
+    "test:e2e": "playwright test -c playwright.config.ts"
+  },
+  "dependencies": {
+    "@web-monitor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@web-monitor/test-fixtures": "workspace:*",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  }
+}

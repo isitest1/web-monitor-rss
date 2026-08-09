@@ -16,6 +16,7 @@ export default [
       '**/test-results/**',
       '**/node_modules/**',
       '**/*.d.ts',
+      '**/.tmp/**',
     ],
   },
   js.configs.recommended,
