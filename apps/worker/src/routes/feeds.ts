@@ -7,12 +7,14 @@ import { nowIso } from '../lib/time.js';
 import {
   deleteFeed,
   getFeedById,
+  getFeedByIdWithVisibleToken,
   getFeedBySlug,
   insertFeed,
   listFeeds,
+  listFeedsWithVisibleToken,
   updateFeed,
 } from '../db/repositories/feeds.js';
-import { issueNewFeedToken, revokeCurrentFeedToken } from '../rss/token.js';
+import { buildRssUrl, issueNewFeedToken, revokeCurrentFeedToken } from '../rss/token.js';
 import {
   requireAdminOnlyAuth,
   requireAdminOrExtensionAuth,
@@ -31,8 +33,20 @@ function originFromRequest(c: { req: { url: string } }): string {
 
 // The extension needs the feed list to let the user pick a destination
 // when registering a Monitor; every other feed operation (creation, RSS
-// token lifecycle) stays admin-only per §12.
+// token lifecycle) stays admin-only per §12. Only the admin caller gets
+// the RSS URL/plaintext token in the response — the extension has no use
+// for RSS delivery credentials, so it keeps seeing the minimal Feed shape.
 feedRoutes.get('/', requireAdminOrExtensionAuth, async (c) => {
+  if (c.get('actor').type === 'admin') {
+    const origin = originFromRequest(c);
+    const feeds = await listFeedsWithVisibleToken(c.env.DB);
+    return c.json({
+      feeds: feeds.map((feed) => ({
+        ...feed,
+        rssUrl: feed.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
+      })),
+    });
+  }
   const feeds = await listFeeds(c.env.DB);
   return c.json({ feeds });
 });
@@ -64,9 +78,13 @@ feedRoutes.post('/', requireCsrfForAdmin, async (c) => {
 });
 
 feedRoutes.get('/:id', async (c) => {
-  const feed = await getFeedById(c.env.DB, requireParam(c, 'id'));
+  const feed = await getFeedByIdWithVisibleToken(c.env.DB, requireParam(c, 'id'));
   if (!feed) return errorJson(c, 404, 'NOT_FOUND', 'feed not found');
-  return c.json(feed);
+  const origin = originFromRequest(c);
+  return c.json({
+    ...feed,
+    rssUrl: feed.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
+  });
 });
 
 feedRoutes.put('/:id', requireCsrfForAdmin, async (c) => {

@@ -17,7 +17,7 @@ export async function issueNewFeedToken(
   const plaintext = randomToken(32);
   const hash = await sha256Hex(plaintext);
   const prefix = plaintext.slice(0, TOKEN_PREFIX_LENGTH);
-  await setFeedToken(db, feed.id, { hash, prefix, issuedAt: now }, now);
+  await setFeedToken(db, feed.id, { hash, prefix, plaintext, issuedAt: now }, now);
   return {
     ...feed,
     rssTokenPrefix: prefix,

@@ -7,7 +7,8 @@ import { monitorHistoryPage } from './pages/monitor-history.js';
 import { feedsPage } from './pages/feeds.js';
 import { listMonitors, getMonitorById } from '../db/repositories/monitors.js';
 import { listMonitorStates } from '../db/repositories/monitor-state.js';
-import { listFeeds } from '../db/repositories/feeds.js';
+import { listFeeds, listFeedsWithVisibleToken } from '../db/repositories/feeds.js';
+import { buildRssUrl } from '../rss/token.js';
 import { getSystemState } from '../db/repositories/system-state.js';
 import { listChecksByMonitor } from '../db/repositories/checks.js';
 import { listChangesByMonitor } from '../db/repositories/changes.js';
@@ -67,7 +68,12 @@ adminRoutes.get('/feeds', async (c) => {
   const session = await getAdminSessionRow(c);
   if (!session) return c.redirect('/login');
 
-  const feeds = await listFeeds(c.env.DB);
+  const origin = new URL(c.req.url).origin;
+  const feeds = await listFeedsWithVisibleToken(c.env.DB);
+  const feedsWithUrl = feeds.map((feed) => ({
+    ...feed,
+    rssUrl: feed.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
+  }));
   const csrfToken = await deriveCsrfToken(c.env, session.sessionToken);
-  return c.html(feedsPage(feeds, csrfToken));
+  return c.html(feedsPage(feedsWithUrl, csrfToken));
 });

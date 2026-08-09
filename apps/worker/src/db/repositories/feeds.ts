@@ -7,6 +7,7 @@ interface FeedRow {
   kind: string;
   rss_token_hash: string | null;
   rss_token_prefix: string | null;
+  rss_token_plaintext: string | null;
   rss_token_issued_at: string | null;
   rss_token_last_used_at: string | null;
   rss_token_status: string | null;
@@ -31,6 +32,20 @@ function mapRow(row: FeedRow): Feed {
   };
 }
 
+/**
+ * The plaintext RSS token, visible any time in the admin UI (not just once
+ * at issue/rotation) — a deliberate policy choice for this personal
+ * single-user deployment. Kept out of `mapRow`/`Feed` so it is never
+ * accidentally included in the Extension-facing feed list.
+ */
+export interface FeedWithVisibleToken extends Feed {
+  rssTokenPlaintext: string | null;
+}
+
+function mapRowWithPlaintext(row: FeedRow): FeedWithVisibleToken {
+  return { ...mapRow(row), rssTokenPlaintext: row.rss_token_plaintext };
+}
+
 export interface InsertFeedInput {
   id: string;
   name: string;
@@ -39,29 +54,20 @@ export interface InsertFeedInput {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
-  rssTokenHash?: string;
-  rssTokenPrefix?: string;
-  rssTokenIssuedAt?: string;
-  rssTokenStatus?: RssTokenStatus;
 }
 
 export async function insertFeed(db: D1Database, input: InsertFeedInput): Promise<Feed> {
   await db
     .prepare(
       `INSERT INTO feeds (
-        id, name, slug, kind, rss_token_hash, rss_token_prefix, rss_token_issued_at,
-        rss_token_status, enabled, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, name, slug, kind, enabled, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       input.id,
       input.name,
       input.slug,
       input.kind,
-      input.rssTokenHash ?? null,
-      input.rssTokenPrefix ?? null,
-      input.rssTokenIssuedAt ?? null,
-      input.rssTokenStatus ?? null,
       input.enabled ? 1 : 0,
       input.createdAt,
       input.updatedAt,
@@ -104,6 +110,21 @@ export async function listFeeds(db: D1Database): Promise<Feed[]> {
   return results.map(mapRow);
 }
 
+export async function listFeedsWithVisibleToken(db: D1Database): Promise<FeedWithVisibleToken[]> {
+  const { results } = await db
+    .prepare('SELECT * FROM feeds ORDER BY created_at ASC')
+    .all<FeedRow>();
+  return results.map(mapRowWithPlaintext);
+}
+
+export async function getFeedByIdWithVisibleToken(
+  db: D1Database,
+  id: string,
+): Promise<FeedWithVisibleToken | null> {
+  const row = await db.prepare('SELECT * FROM feeds WHERE id = ?').bind(id).first<FeedRow>();
+  return row ? mapRowWithPlaintext(row) : null;
+}
+
 export async function updateFeed(
   db: D1Database,
   id: string,
@@ -128,17 +149,17 @@ export async function deleteFeed(db: D1Database, id: string): Promise<void> {
 export async function setFeedToken(
   db: D1Database,
   id: string,
-  token: { hash: string; prefix: string; issuedAt: string },
+  token: { hash: string; prefix: string; plaintext: string; issuedAt: string },
   updatedAt: string,
 ): Promise<void> {
   await db
     .prepare(
       `UPDATE feeds
-       SET rss_token_hash = ?, rss_token_prefix = ?, rss_token_issued_at = ?,
+       SET rss_token_hash = ?, rss_token_prefix = ?, rss_token_plaintext = ?, rss_token_issued_at = ?,
            rss_token_last_used_at = NULL, rss_token_status = 'active', updated_at = ?
        WHERE id = ?`,
     )
-    .bind(token.hash, token.prefix, token.issuedAt, updatedAt, id)
+    .bind(token.hash, token.prefix, token.plaintext, token.issuedAt, updatedAt, id)
     .run();
 }
 

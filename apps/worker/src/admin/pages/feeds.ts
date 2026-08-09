@@ -2,19 +2,23 @@ import type { Feed } from '@web-monitor/shared';
 import { layout } from './layout.js';
 import { escapeHtml, escapeJs } from './escape.js';
 
+export interface FeedRow extends Feed {
+  rssUrl: string | null;
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
   return new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
 }
 
-export function feedsPage(feeds: Feed[], csrfToken: string): string {
+export function feedsPage(feeds: FeedRow[], csrfToken: string): string {
   const body = `
 <p><a href="/monitors">&larr; Watchlistへ戻る</a></p>
 <div class="card">
   <h1>Feed管理</h1>
   <table>
     <thead>
-      <tr><th>名前</th><th>種別</th><th>有効</th><th>トークン</th><th>発行日時</th><th>最終利用</th><th>操作</th></tr>
+      <tr><th>名前</th><th>種別</th><th>有効</th><th>RSS URL</th><th>発行日時</th><th>最終利用</th><th>操作</th></tr>
     </thead>
     <tbody id="feeds-table-body">
       ${feeds
@@ -23,7 +27,14 @@ export function feedsPage(feeds: Feed[], csrfToken: string): string {
             <td>${escapeHtml(feed.name)}</td>
             <td>${feed.kind === 'system' ? 'システム' : 'コンテンツ'}</td>
             <td>${feed.enabled ? '有効' : '無効'}</td>
-            <td>${feed.rssTokenStatus === 'active' ? `${escapeHtml(feed.rssTokenPrefix ?? '')}... (有効)` : '失効済み'}</td>
+            <td>
+              ${
+                feed.rssUrl
+                  ? `<input type="text" readonly value="${escapeHtml(feed.rssUrl)}" style="width: 260px;" onclick="this.select()" />
+                     <button class="secondary copy-btn" data-url="${escapeHtml(feed.rssUrl)}">コピー</button>`
+                  : '(失効済み)'
+              }
+            </td>
             <td>${escapeHtml(formatDate(feed.rssTokenIssuedAt))}</td>
             <td>${escapeHtml(formatDate(feed.rssTokenLastUsedAt))}</td>
             <td>
@@ -35,7 +46,7 @@ export function feedsPage(feeds: Feed[], csrfToken: string): string {
         .join('')}
     </tbody>
   </table>
-  <div id="token-reveal"></div>
+  <p class="muted">RSS URLにはアクセス用のトークンが含まれています。他人に共有しないでください。</p>
 </div>
 
 <div class="card">
@@ -56,19 +67,6 @@ export function feedsPage(feeds: Feed[], csrfToken: string): string {
 <script>
 const csrfToken = '${escapeJs(csrfToken)}';
 
-function showToken(feedName, rssUrl, rssToken) {
-  const el = document.getElementById('token-reveal');
-  el.innerHTML =
-    '<div class="card" style="border: 2px solid #1a7f37;">' +
-    '<strong>' + feedName + ' のRSSトークンが発行されました。この画面でのみ表示されます。</strong>' +
-    '<p style="word-break: break-all;">' + rssUrl + '</p>' +
-    '<button id="copy-token-btn">URLをコピー</button>' +
-    '</div>';
-  document.getElementById('copy-token-btn').addEventListener('click', () => {
-    navigator.clipboard.writeText(rssUrl);
-  });
-}
-
 document.getElementById('create-feed-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const name = document.getElementById('feed-name').value;
@@ -80,9 +78,7 @@ document.getElementById('create-feed-form').addEventListener('submit', async (ev
     body: JSON.stringify({ name, slug, kind }),
   });
   if (res.ok) {
-    const feed = await res.json();
-    showToken(feed.name, feed.rssUrl, feed.rssToken);
-    window.setTimeout(() => window.location.reload(), 3000);
+    window.location.reload();
   } else {
     alert('作成に失敗しました');
   }
@@ -91,26 +87,30 @@ document.getElementById('create-feed-form').addEventListener('submit', async (ev
 document.querySelectorAll('.rotate-btn').forEach((btn) => {
   btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-id');
+    if (!confirm('現在のRSS URLは無効になり、新しいURLに置き換わります。よろしいですか？')) return;
     const res = await fetch('/api/feeds/' + id + '/rotate-token', {
       method: 'POST',
       headers: { 'x-csrf-token': csrfToken },
     });
-    if (res.ok) {
-      const feed = await res.json();
-      showToken(feed.name, feed.rssUrl, feed.rssToken);
-    }
+    if (res.ok) window.location.reload();
   });
 });
 
 document.querySelectorAll('.revoke-btn').forEach((btn) => {
   btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-id');
-    if (!confirm('このFeedのRSSトークンを失効します。よろしいですか？')) return;
+    if (!confirm('このFeedのRSS URLを失効します。よろしいですか？')) return;
     await fetch('/api/feeds/' + id + '/revoke-token', {
       method: 'POST',
       headers: { 'x-csrf-token': csrfToken },
     });
     window.location.reload();
+  });
+});
+
+document.querySelectorAll('.copy-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(btn.getAttribute('data-url'));
   });
 });
 </script>

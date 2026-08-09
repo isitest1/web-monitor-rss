@@ -90,6 +90,42 @@ describe('feed and RSS token lifecycle', () => {
     expect(newRes.status).toBe(200);
   });
 
+  it('keeps showing the RSS URL to the admin on every GET, not just once', async () => {
+    const admin = await loginAsAdmin(env);
+    const createRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'AlwaysVisible', slug: 'always-visible', kind: 'content' }),
+    });
+    const feed = await createRes.json<FeedWithPlaintextToken>();
+
+    const listRes = await admin.request('/api/feeds');
+    const { feeds } = await listRes.json<{ feeds: Array<{ id: string; rssUrl: string | null }> }>();
+    const found = feeds.find((f) => f.id === feed.id);
+    expect(found?.rssUrl).toBe(feed.rssUrl);
+
+    const detailRes = await admin.request(`/api/feeds/${feed.id}`);
+    const detail = await detailRes.json<{ rssUrl: string | null }>();
+    expect(detail.rssUrl).toBe(feed.rssUrl);
+  });
+
+  it('does not expose the RSS URL/token to the extension actor', async () => {
+    const admin = await loginAsAdmin(env);
+    await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'ExtHidden', slug: 'ext-hidden', kind: 'content' }),
+    });
+
+    const res = await testApp().request(
+      '/api/feeds',
+      { headers: { authorization: `Bearer ${env.EXTENSION_API_TOKEN}` } },
+      env,
+    );
+    const body = await res.text();
+    expect(body).not.toContain('rssUrl');
+    expect(body).not.toContain('rssTokenPlaintext');
+    expect(body).not.toContain('"rssToken"');
+  });
+
   it('rejects creating a feed with a duplicate slug', async () => {
     const admin = await loginAsAdmin(env);
     await admin.request('/api/feeds', {
