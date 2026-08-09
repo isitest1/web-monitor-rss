@@ -18,7 +18,7 @@ crons = ["0 * * * *"]
 ADMIN_SESSION_TTL_SEC = "604800"
 DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
 ADMIN_ALLOWED_ORIGIN = "https://web-monitor-rss-worker.kouhei1.workers.dev"
-EXTENSION_ALLOWED_ORIGIN = "chrome-extension://iogmaibpnohjcclimocdipcnglcbnkaa"
+EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh"
 
 # Secrets (set via `wrangler secret put`, never committed):
 # ADMIN_LOGIN_SECRET, EXTENSION_API_TOKEN, RUNNER_API_TOKEN, SESSION_SIGNING_SECRET
