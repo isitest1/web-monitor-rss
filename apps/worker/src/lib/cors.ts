@@ -25,7 +25,11 @@ export async function corsMiddleware(
   }
 
   if (c.req.method === 'OPTIONS') {
-    return new Response(null, { status: 204 });
+    // Must return via c.body(), not a raw `new Response(...)`: headers set
+    // through c.header() above are attached to Hono's own response
+    // builder, and a manually constructed Response bypasses it entirely,
+    // silently dropping every CORS header from the preflight reply.
+    return c.body(null, 204);
   }
 
   await next();
