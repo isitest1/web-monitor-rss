@@ -9,6 +9,17 @@ export interface Env {
   ADMIN_ALLOWED_ORIGIN: string;
   EXTENSION_ALLOWED_ORIGIN: string;
   /**
+   * Optional: lets a newly created Monitor trigger an immediate GitHub
+   * Actions run (scoped to just that Monitor) instead of waiting for the
+   * next scheduled/manual run. If GITHUB_DISPATCH_TOKEN is unset, this
+   * feature is silently disabled.
+   */
+  GITHUB_DISPATCH_TOKEN?: string;
+  GITHUB_REPO_OWNER?: string;
+  GITHUB_REPO_NAME?: string;
+  GITHUB_WORKFLOW_FILE?: string;
+  GITHUB_REPO_REF?: string;
+  /**
    * Test-only escape hatch for the localhost/private-hostname Monitor URL
    * guard (§13), so local integration tests can point Monitors at a local
    * fixture server. Unset in production wrangler.toml; must never be set

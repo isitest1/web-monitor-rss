@@ -10,6 +10,7 @@ import { generateId } from '../lib/ids.js';
 import { nowIso } from '../lib/time.js';
 import { deleteFeed, getFeedById } from '../db/repositories/feeds.js';
 import { createDedicatedFeedForMonitor } from '../rss/auto-feed.js';
+import { getGithubDispatchConfig, triggerMonitorCheck } from '../lib/github-dispatch.js';
 import {
   countMonitorsForFeed,
   deleteMonitor,
@@ -111,6 +112,21 @@ monitorRoutes.post('/', requireCsrfForAdmin, async (c) => {
   await replaceSelectionsForMonitor(c.env.DB, monitor.id, parsed.data.selections, generateId, now);
   await ensureMonitorState(c.env.DB, monitor.id, now);
   const selections = await listSelectionsByMonitor(c.env.DB, monitor.id);
+
+  if (monitor.enabled) {
+    const dispatchConfig = getGithubDispatchConfig(c.env);
+    if (dispatchConfig) {
+      c.executionCtx.waitUntil(
+        triggerMonitorCheck(dispatchConfig, monitor.id).catch((error) => {
+          console.warn(
+            'github dispatch for immediate baseline check failed:',
+            error instanceof Error ? error.message : String(error),
+          );
+        }),
+      );
+    }
+  }
+
   return c.json({ ...monitor, selections }, 201);
 });
 
