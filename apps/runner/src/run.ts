@@ -29,10 +29,11 @@ export async function runDailyCheck(config: RunnerConfig): Promise<void> {
     const browser = await chromium.launch();
     try {
       for (const monitor of monitors) {
-        const outcome = await checkMonitor(browser, monitor);
+        const outcome = await checkMonitor(browser, monitor, runId);
         // Never log extracted content, only metadata.
         console.log(
-          `monitor=${monitor.id} name="${monitor.name}" status=${outcome.status} durationMs=${outcome.durationMs}`,
+          `monitor=${monitor.id} name="${monitor.name}" status=${outcome.status} durationMs=${outcome.durationMs}` +
+            (outcome.tracePath ? ` trace=${outcome.tracePath}` : ''),
         );
         const result = await submitResult(config, {
           monitorId: monitor.id,

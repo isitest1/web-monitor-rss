@@ -1,4 +1,6 @@
-import type { Browser } from 'playwright';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { Browser, BrowserContext } from 'playwright';
 import type {
   ExtractedSelectionValue,
   MonitorWithSelections,
@@ -16,16 +18,26 @@ export interface CheckOutcome {
   errorCode: string | null;
   errorMessage: string | null;
   durationMs: number;
+  tracePath: string | null;
 }
+
+const TRACE_DIR = join(process.cwd(), 'traces');
 
 export async function checkMonitor(
   browser: Browser,
   monitor: MonitorWithSelections,
+  runId: string,
 ): Promise<CheckOutcome> {
   const startedAt = Date.now();
   const context = await createMonitorContext(browser);
   const page = await context.newPage();
   page.setDefaultTimeout(PAGE_TIMEOUT_MS);
+
+  // Traced but content-free: no screenshots/DOM snapshots/sources are
+  // captured, only the action/network timeline, so a saved trace never
+  // contains page HTML or cookies. Only kept on failure, for diagnosing
+  // navigation/selector problems (§13/§15.2).
+  await context.tracing.start({ screenshots: false, snapshots: false, sources: false });
 
   try {
     const response = await page.goto(monitor.url, {
@@ -50,6 +62,7 @@ export async function checkMonitor(
     }
 
     const values = await extractAllSelections(page, monitor.selections);
+    await context.tracing.stop();
 
     return {
       status: 'SUCCESS',
@@ -58,9 +71,11 @@ export async function checkMonitor(
       errorCode: null,
       errorMessage: null,
       durationMs: Date.now() - startedAt,
+      tracePath: null,
     };
   } catch (error) {
     const { statusCode, message } = classifyException(error);
+    const tracePath = await saveFailureTrace(context, monitor.id, runId);
     return {
       status: statusCode,
       httpStatus: null,
@@ -68,9 +83,25 @@ export async function checkMonitor(
       errorCode: statusCode,
       errorMessage: message.slice(0, 2000),
       durationMs: Date.now() - startedAt,
+      tracePath,
     };
   } finally {
     await page.close().catch(() => undefined);
     await context.close().catch(() => undefined);
+  }
+}
+
+async function saveFailureTrace(
+  context: BrowserContext,
+  monitorId: string,
+  runId: string,
+): Promise<string | null> {
+  try {
+    await mkdir(TRACE_DIR, { recursive: true });
+    const path = join(TRACE_DIR, `${runId}-${monitorId}.zip`);
+    await context.tracing.stop({ path });
+    return path;
+  } catch {
+    return null;
   }
 }

@@ -16,5 +16,6 @@ test-results/
 *.tsbuildinfo
 .tmp/
 apps/extension/dist/
+apps/runner/traces/
 .vscode/*
 !.vscode/extensions.json

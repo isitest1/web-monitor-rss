@@ -1,0 +1,58 @@
+name: Daily monitor
+
+on:
+  schedule:
+    # Runs once daily. GitHub may delay the actual start time; that is
+    # expected and not treated as a failure (§8.1/§15.2) — long-term
+    # silent stoppage is caught separately by the Worker cron watchdog.
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      monitor_id:
+        description: '確認するMonitor ID（空欄なら有効な全Monitorを確認）'
+        required: false
+        type: string
+
+concurrency:
+  group: daily-monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MONITOR_API_BASE_URL: ${{ secrets.MONITOR_API_BASE_URL }}
+      RUNNER_API_TOKEN: ${{ secrets.RUNNER_API_TOKEN }}
+      MONITOR_ID: ${{ inputs.monitor_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @web-monitor/runner exec playwright install --with-deps chromium
+
+      - name: Run daily monitor check
+        id: run_monitor
+        run: pnpm --filter @web-monitor/runner run start
+
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: apps/runner/traces/
+          retention-days: 3
+          if-no-files-found: ignore
