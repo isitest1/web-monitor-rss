@@ -25,15 +25,20 @@ import {
 } from '../db/repositories/monitor-state.js';
 import { listChecksByMonitor } from '../db/repositories/checks.js';
 import { listChangesByMonitor } from '../db/repositories/changes.js';
-import { requireAdminSession, requireCsrf } from '../auth/middleware.js';
-import type { AdminSessionContext } from '../auth/admin-session.js';
+import {
+  requireAdminOrExtensionAuth,
+  requireCsrfForAdmin,
+  type Actor,
+} from '../auth/middleware.js';
 
 export const monitorRoutes = new Hono<{
   Bindings: Env;
-  Variables: { adminSession: AdminSessionContext };
+  Variables: { actor: Actor };
 }>();
 
-monitorRoutes.use('*', requireAdminSession);
+// Both the admin UI (cookie session) and the Chrome extension (Extension
+// API token) manage Monitor definitions, per §4/§10.
+monitorRoutes.use('*', requireAdminOrExtensionAuth);
 
 monitorRoutes.get('/', async (c) => {
   const monitors = await listMonitors(c.env.DB);
@@ -51,7 +56,7 @@ monitorRoutes.get('/', async (c) => {
   });
 });
 
-monitorRoutes.post('/', requireCsrf, async (c) => {
+monitorRoutes.post('/', requireCsrfForAdmin, async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = createMonitorRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -93,7 +98,7 @@ monitorRoutes.get('/:id', async (c) => {
   return c.json({ ...monitor, selections, state });
 });
 
-monitorRoutes.put('/:id', requireCsrf, async (c) => {
+monitorRoutes.put('/:id', requireCsrfForAdmin, async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = updateMonitorRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -117,20 +122,20 @@ monitorRoutes.put('/:id', requireCsrf, async (c) => {
   return c.json({ ...updated, selections: currentSelections });
 });
 
-monitorRoutes.delete('/:id', requireCsrf, async (c) => {
+monitorRoutes.delete('/:id', requireCsrfForAdmin, async (c) => {
   const existing = await getMonitorById(c.env.DB, requireParam(c, 'id'));
   if (!existing) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
   await deleteMonitor(c.env.DB, existing.id);
   return c.body(null, 204);
 });
 
-monitorRoutes.post('/:id/enable', requireCsrf, async (c) => {
+monitorRoutes.post('/:id/enable', requireCsrfForAdmin, async (c) => {
   const updated = await setMonitorEnabled(c.env.DB, requireParam(c, 'id'), true, nowIso());
   if (!updated) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
   return c.json(updated);
 });
 
-monitorRoutes.post('/:id/disable', requireCsrf, async (c) => {
+monitorRoutes.post('/:id/disable', requireCsrfForAdmin, async (c) => {
   const updated = await setMonitorEnabled(c.env.DB, requireParam(c, 'id'), false, nowIso());
   if (!updated) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
   return c.json(updated);

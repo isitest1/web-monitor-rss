@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testApp } from './test-app.js';
+import { loginAsAdmin } from './support.js';
 
 function extractCookie(res: Response): string {
   const setCookie = res.headers.get('set-cookie') ?? '';
@@ -149,6 +150,77 @@ describe('extension and runner token separation', () => {
 
   it('rejects requests with no bearer token at all', async () => {
     const res = await testApp().request('/api/runner/monitors', {}, env);
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('extension access to monitor/feed management', () => {
+  it('lets the extension list and create monitors without a CSRF header', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Ext Feed', slug: 'ext-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<{ id: string }>();
+
+    const listRes = await testApp().request(
+      '/api/monitors',
+      { headers: { authorization: `Bearer ${env.EXTENSION_API_TOKEN}` } },
+      env,
+    );
+    expect(listRes.status).toBe(200);
+
+    const createRes = await testApp().request(
+      '/api/monitors',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${env.EXTENSION_API_TOKEN}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          feedId: feed.id,
+          name: 'Extension Monitor',
+          url: 'https://example.com/ext',
+          selections: [
+            { label: '見出し', selectorType: 'css', selector: '#h', extractionMode: 'text' },
+          ],
+        }),
+      },
+      env,
+    );
+    expect(createRes.status).toBe(201);
+  });
+
+  it('lets the extension list feeds but not create one', async () => {
+    const listRes = await testApp().request(
+      '/api/feeds',
+      { headers: { authorization: `Bearer ${env.EXTENSION_API_TOKEN}` } },
+      env,
+    );
+    expect(listRes.status).toBe(200);
+
+    const createRes = await testApp().request(
+      '/api/feeds',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${env.EXTENSION_API_TOKEN}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ name: 'Nope', slug: 'nope', kind: 'content' }),
+      },
+      env,
+    );
+    expect(createRes.status).toBe(401);
+  });
+
+  it('rejects the runner token for admin monitor management endpoints', async () => {
+    const res = await testApp().request(
+      '/api/monitors',
+      { headers: { authorization: `Bearer ${env.RUNNER_API_TOKEN}` } },
+      env,
+    );
     expect(res.status).toBe(401);
   });
 });

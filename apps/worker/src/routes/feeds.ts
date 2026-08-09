@@ -13,26 +13,33 @@ import {
   updateFeed,
 } from '../db/repositories/feeds.js';
 import { issueNewFeedToken, revokeCurrentFeedToken } from '../rss/token.js';
-import { requireAdminSession, requireCsrf } from '../auth/middleware.js';
-import type { AdminSessionContext } from '../auth/admin-session.js';
+import {
+  requireAdminOnlyAuth,
+  requireAdminOrExtensionAuth,
+  requireCsrfForAdmin,
+  type Actor,
+} from '../auth/middleware.js';
 
 export const feedRoutes = new Hono<{
   Bindings: Env;
-  Variables: { adminSession: AdminSessionContext };
+  Variables: { actor: Actor };
 }>();
-
-feedRoutes.use('*', requireAdminSession);
 
 function originFromRequest(c: { req: { url: string } }): string {
   return new URL(c.req.url).origin;
 }
 
-feedRoutes.get('/', async (c) => {
+// The extension needs the feed list to let the user pick a destination
+// when registering a Monitor; every other feed operation (creation, RSS
+// token lifecycle) stays admin-only per §12.
+feedRoutes.get('/', requireAdminOrExtensionAuth, async (c) => {
   const feeds = await listFeeds(c.env.DB);
   return c.json({ feeds });
 });
 
-feedRoutes.post('/', requireCsrf, async (c) => {
+feedRoutes.use('*', requireAdminOnlyAuth);
+
+feedRoutes.post('/', requireCsrfForAdmin, async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = createFeedRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -62,7 +69,7 @@ feedRoutes.get('/:id', async (c) => {
   return c.json(feed);
 });
 
-feedRoutes.put('/:id', requireCsrf, async (c) => {
+feedRoutes.put('/:id', requireCsrfForAdmin, async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = updateFeedRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -73,7 +80,7 @@ feedRoutes.put('/:id', requireCsrf, async (c) => {
   return c.json(updated);
 });
 
-feedRoutes.delete('/:id', requireCsrf, async (c) => {
+feedRoutes.delete('/:id', requireCsrfForAdmin, async (c) => {
   const id = requireParam(c, 'id');
   const feed = await getFeedById(c.env.DB, id);
   if (!feed) return errorJson(c, 404, 'NOT_FOUND', 'feed not found');
@@ -81,7 +88,7 @@ feedRoutes.delete('/:id', requireCsrf, async (c) => {
   return c.body(null, 204);
 });
 
-feedRoutes.post('/:id/rotate-token', requireCsrf, async (c) => {
+feedRoutes.post('/:id/rotate-token', requireCsrfForAdmin, async (c) => {
   const feed = await getFeedById(c.env.DB, requireParam(c, 'id'));
   if (!feed) return errorJson(c, 404, 'NOT_FOUND', 'feed not found');
   const now = nowIso();
@@ -89,7 +96,7 @@ feedRoutes.post('/:id/rotate-token', requireCsrf, async (c) => {
   return c.json(withToken);
 });
 
-feedRoutes.post('/:id/revoke-token', requireCsrf, async (c) => {
+feedRoutes.post('/:id/revoke-token', requireCsrfForAdmin, async (c) => {
   const feed = await getFeedById(c.env.DB, requireParam(c, 'id'));
   if (!feed) return errorJson(c, 404, 'NOT_FOUND', 'feed not found');
   const now = nowIso();
