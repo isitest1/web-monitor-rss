@@ -32,7 +32,9 @@ export function feedsPage(feeds: FeedRow[], csrfToken: string): string {
                 feed.rssUrl
                   ? `<input type="text" readonly value="${escapeHtml(feed.rssUrl)}" style="width: 260px;" onclick="this.select()" />
                      <button class="secondary copy-btn" data-url="${escapeHtml(feed.rssUrl)}">コピー</button>`
-                  : '(失効済み)'
+                  : feed.rssTokenStatus === 'active'
+                    ? '<span class="muted">有効（このシステム更新より前に発行されたためURLは非表示。再発行すると表示されます）</span>'
+                    : '<span class="muted">(失効済み)</span>'
               }
             </td>
             <td>${escapeHtml(formatDate(feed.rssTokenIssuedAt))}</td>
