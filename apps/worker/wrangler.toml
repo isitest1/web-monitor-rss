@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "web-monitor-rss"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "60fb57cd-e6ce-472d-aa20-47470155e4cf"
 migrations_dir = "migrations"
 
 [triggers]
@@ -17,7 +17,7 @@ crons = ["0 * * * *"]
 [vars]
 ADMIN_SESSION_TTL_SEC = "604800"
 DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
-ADMIN_ALLOWED_ORIGIN = "http://localhost:8787"
+ADMIN_ALLOWED_ORIGIN = "https://web-monitor-rss-worker.kouhei1.workers.dev"
 EXTENSION_ALLOWED_ORIGIN = "chrome-extension://REPLACE_WITH_EXTENSION_ID"
 
 # Secrets (set via `wrangler secret put`, never committed):
