@@ -39,12 +39,23 @@ function healthBanner(state: SystemState): string {
   </div>`;
 }
 
+function feedSelect(monitor: Monitor, contentFeeds: Feed[]): string {
+  const options = contentFeeds
+    .map(
+      (feed) =>
+        `<option value="${escapeHtml(feed.id)}"${feed.id === monitor.feedId ? ' selected' : ''}>${escapeHtml(feed.name)}</option>`,
+    )
+    .join('');
+  return `<select class="feed-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
+}
+
 export function monitorsPage(
   rows: MonitorRow[],
-  _feeds: Feed[],
+  feeds: Feed[],
   systemState: SystemState,
   csrfToken: string,
 ): string {
+  const contentFeeds = feeds.filter((f) => f.kind === 'content');
   const body = `
 ${healthBanner(systemState)}
 <div class="card">
@@ -69,7 +80,7 @@ ${healthBanner(systemState)}
           const cls = statusClass(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
           return `<tr>
             <td>${escapeHtml(row.monitor.name)}</td>
-            <td>${escapeHtml(row.feedName)}</td>
+            <td>${feedSelect(row.monitor, contentFeeds)}</td>
             <td>${escapeHtml(summarizeValue(row.state))}</td>
             <td class="${cls}">${escapeHtml(label)}</td>
             <td>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</td>
@@ -87,6 +98,7 @@ ${healthBanner(systemState)}
     </tbody>
   </table>
   ${rows.length === 0 ? '<p class="muted">監視対象がまだありません。Chrome拡張機能で選択して登録してください。</p>' : ''}
+  <p class="muted">Feed列のプルダウンで、MonitorをどのRSS Feedに配信するか変更できます。</p>
 </div>
 <p class="muted">GitHub ActionsのworkflowをActions画面からworkflow_dispatchで手動実行すると、即時に確認できます。</p>
 <script>
@@ -103,6 +115,17 @@ document.querySelectorAll('.toggle-btn').forEach((btn) => {
     await fetch('/api/monitors/' + id + '/' + action, {
       method: 'POST',
       headers: { 'x-csrf-token': csrfToken },
+    });
+    window.location.reload();
+  });
+});
+document.querySelectorAll('.feed-select').forEach((select) => {
+  select.addEventListener('change', async () => {
+    const id = select.getAttribute('data-id');
+    await fetch('/api/monitors/' + id, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+      body: JSON.stringify({ feedId: select.value }),
     });
     window.location.reload();
   });

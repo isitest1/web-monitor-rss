@@ -126,6 +126,11 @@ monitorRoutes.put('/:id', requireCsrfForAdmin, async (c) => {
   if (parsed.data.url && !isMonitorUrlAllowed(c.env, parsed.data.url)) {
     return errorJson(c, 400, 'INVALID_REQUEST', 'URL is not allowed');
   }
+  if (parsed.data.feedId) {
+    const feed = await getFeedById(c.env.DB, parsed.data.feedId);
+    if (!feed)
+      return errorJson(c, 400, 'INVALID_REQUEST', 'feedId does not reference an existing feed');
+  }
 
   const now = nowIso();
   const { selections, ...monitorPatch } = parsed.data;

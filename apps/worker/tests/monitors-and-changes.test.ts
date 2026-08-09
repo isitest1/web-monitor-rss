@@ -91,6 +91,29 @@ describe('monitor result processing and change detection', () => {
     }
   });
 
+  it('lets an existing monitor be moved to a different feed via PUT', async () => {
+    const admin = await loginAsAdmin(env);
+    const otherFeedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Other Feed', slug: 'other-feed', kind: 'content' }),
+    });
+    const otherFeed = await otherFeedRes.json<FeedWithPlaintextToken>();
+
+    const putRes = await admin.request(`/api/monitors/${monitor.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ feedId: otherFeed.id }),
+    });
+    expect(putRes.status).toBe(200);
+    const updated = await putRes.json<MonitorWithSelections>();
+    expect(updated.feedId).toBe(otherFeed.id);
+
+    const rejectRes = await admin.request(`/api/monitors/${monitor.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ feedId: 'does-not-exist' }),
+    });
+    expect(rejectRes.status).toBe(400);
+  });
+
   it('exposes the monitor to the runner via GET /api/runner/monitors', async () => {
     const res = await runnerRequest('/api/runner/monitors');
     expect(res.status).toBe(200);

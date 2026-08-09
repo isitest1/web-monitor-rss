@@ -87,6 +87,7 @@ export const createMonitorRequestSchema = z.object({
 export type CreateMonitorRequest = z.infer<typeof createMonitorRequestSchema>;
 
 export const updateMonitorRequestSchema = z.object({
+  feedId: z.string().min(1).optional(),
   name: z.string().min(1).max(200).optional(),
   url: monitorUrlSchema.optional(),
   monitorMode: monitorModeSchema.optional(),

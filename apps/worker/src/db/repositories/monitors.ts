@@ -87,6 +87,7 @@ export async function listEnabledMonitors(db: D1Database): Promise<Monitor[]> {
 }
 
 export interface UpdateMonitorInput {
+  feedId?: string | undefined;
   name?: string | undefined;
   url?: string | undefined;
   monitorMode?: MonitorMode | undefined;
@@ -107,10 +108,11 @@ export async function updateMonitor(
   await db
     .prepare(
       `UPDATE monitors
-       SET name = ?, url = ?, monitor_mode = ?, comparison_rule = ?, enabled = ?, order_index = ?, updated_at = ?
+       SET feed_id = ?, name = ?, url = ?, monitor_mode = ?, comparison_rule = ?, enabled = ?, order_index = ?, updated_at = ?
        WHERE id = ?`,
     )
     .bind(
+      merged.feedId,
       merged.name,
       merged.url,
       merged.monitorMode,
