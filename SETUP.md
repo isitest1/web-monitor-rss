@@ -65,7 +65,7 @@ wrangler --version
 
 ```
 pnpm install
-pnpm ci
+pnpm run ci
 ```
 
 ## 5. GitHubリポジトリの設定
@@ -268,6 +268,8 @@ MacのChromeからDev Container内のファイルを直接選択しにくい場�
 
 拡張機能には、Worker APIへ接続するためのExtension APIトークンを設定します。トークン値は拡張機能の設定画面へ入力し、ソースコードへ直接記載しないでください。
 
+`chrome://extensions/`に表示される拡張機能ID（`chrome-extension://` に続く英数字）を確認し、apps/worker/wrangler.tomlの`EXTENSION_ALLOWED_ORIGIN`を`chrome-extension://<拡張機能ID>`へ更新してください。この値と一致しないoriginからのAPI要求はCORSで拒否されます。管理画面を別ドメインで配信する場合は、同様に`ADMIN_ALLOWED_ORIGIN`も実際のoriginへ更新してください。
+
 ## 14. Visual Selectorの確認
 
 テスト用ページを起動します。
@@ -370,7 +372,7 @@ pnpm test:e2e
 まとめて実行できる構成にした後は、次を使用します。
 
 ```
-pnpm ci
+pnpm run ci
 ```
 
 ## 20. 秘密情報をcommitしないための確認
