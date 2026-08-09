@@ -53,10 +53,22 @@ export default [
     },
   },
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     languageOptions: {
       sourceType: 'module',
       ecmaVersion: 2022,
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    // The Runner is a CLI process: console.log is its normal progress
+    // output, not stray debug logging. It must still never log extracted
+    // page content, which is enforced by review/code convention, not lint.
+    files: ['apps/runner/src/**/*.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
   prettierConfig,

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>動的テストページ</title>
+  </head>
+  <body>
+    <main>
+      <div id="app">読み込み中...</div>
+    </main>
+    <script>
+      // Simulates client-side rendering: content only appears after a delay,
+      // well past DOMContentLoaded, so a correct runner must wait for the
+      // selector rather than reading the page immediately.
+      var variant = new URLSearchParams(location.search).get('variant') || 'initial';
+      var headline =
+        variant === 'changed' ? '動的に更新された見出しです' : '動的に生成された見出しです';
+      var price = variant === 'changed' ? '¥3,980' : '¥2,980';
+      var items =
+        variant === 'changed'
+          ? ['動的項目A', '動的項目B', '動的項目C']
+          : ['動的項目A', '動的項目B'];
+
+      setTimeout(function () {
+        var app = document.getElementById('app');
+        app.innerHTML =
+          '<h1 id="headline">' +
+          headline +
+          '</h1>' +
+          '<p data-testid="price">価格: ' +
+          price +
+          '</p>' +
+          '<ul id="item-list">' +
+          items
+            .map(function (item) {
+              return '<li class="item">' + item + '</li>';
+            })
+            .join('') +
+          '</ul>';
+      }, 150);
+    </script>
+  </body>
+</html>

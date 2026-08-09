@@ -30,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @web-monitor/runner exec playwright install --with-deps chromium
 
       - name: Run CI checks
         # `pnpm ci` (no `run`) is reserved by pnpm itself for a future built-in
