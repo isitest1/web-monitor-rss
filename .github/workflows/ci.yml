@@ -33,4 +33,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run CI checks
-        run: pnpm ci
+        # `pnpm ci` (no `run`) is reserved by pnpm itself for a future built-in
+        # command and errors with ERR_PNPM_CI_NOT_IMPLEMENTED, so the "ci"
+        # script must be invoked explicitly via `pnpm run ci`.
+        run: pnpm run ci

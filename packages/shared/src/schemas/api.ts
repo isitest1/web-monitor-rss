@@ -19,12 +19,6 @@ export const runnerMonitorListResponseSchema = z.object({
 });
 export type RunnerMonitorListResponse = z.infer<typeof runnerMonitorListResponseSchema>;
 
-export const runnerSelectionResultSchema = z.object({
-  selectionId: z.string(),
-  value: z.union([z.string(), z.array(z.string())]).nullable(),
-});
-export type RunnerSelectionResult = z.infer<typeof runnerSelectionResultSchema>;
-
 const MAX_ERROR_MESSAGE_LENGTH = 2000;
 
 export const runnerResultRequestSchema = z.object({
@@ -37,7 +31,9 @@ export const runnerResultRequestSchema = z.object({
   httpStatus: z.number().int().nullable().default(null),
   errorCode: z.string().max(100).nullable().default(null),
   errorMessage: z.string().max(MAX_ERROR_MESSAGE_LENGTH).nullable().default(null),
-  results: z.array(runnerSelectionResultSchema).default([]),
+  // Selections already normalized by the Runner (both display and comparison
+  // values); the Worker only decides whether the comparison values changed.
+  values: z.array(extractedSelectionValueSchema).default([]),
 });
 export type RunnerResultRequest = z.infer<typeof runnerResultRequestSchema>;
 

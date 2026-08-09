@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MONITOR_STATUSES } from '../status-codes.js';
 
-export const monitorStatusSchema = z.enum(MONITOR_STATUSES as unknown as [string, ...string[]]);
+export const monitorStatusSchema = z.enum(MONITOR_STATUSES);
 
 export const extractedSelectionValueSchema = z.object({
   selectionId: z.string(),

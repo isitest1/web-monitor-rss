@@ -45,6 +45,11 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // TypeScript itself (via ambient .d.ts, e.g. @cloudflare/workers-types)
+      // already catches undefined identifiers, and does so more accurately
+      // than eslint's static global list; no-undef only produces false
+      // positives here.
+      'no-undef': 'off',
     },
   },
   {

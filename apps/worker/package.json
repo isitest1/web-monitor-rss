@@ -1,0 +1,28 @@
+{
+  "name": "@web-monitor/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply web-monitor-rss --local",
+    "db:migrate:remote": "wrangler d1 migrations apply web-monitor-rss --remote",
+    "db:seed:local": "wrangler d1 execute web-monitor-rss --local --file=./seed.sql"
+  },
+  "dependencies": {
+    "@web-monitor/shared": "workspace:*",
+    "hono": "^4.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.20.3",
+    "@cloudflare/workers-types": "^5.20260809.1",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.120.0"
+  }
+}
