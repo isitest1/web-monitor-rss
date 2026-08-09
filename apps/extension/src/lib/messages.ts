@@ -1,12 +1,10 @@
 import type {
   CreateMonitorRequest,
-  Feed,
   MonitorWithSelections,
   UpdateMonitorRequest,
 } from '@web-monitor/shared';
 
 export type ExtensionMessage =
-  | { type: 'LIST_FEEDS' }
   | { type: 'LIST_MONITORS' }
   | { type: 'GET_MONITOR'; monitorId: string }
   | { type: 'CREATE_MONITOR'; payload: CreateMonitorRequest }
@@ -16,10 +14,6 @@ export type ExtensionMessage =
   | { type: 'START_SELECTION_MODE'; monitorMode: 'single' | 'list' };
 
 export type MessageResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-export interface ListFeedsResult {
-  feeds: Feed[];
-}
 
 export interface ListMonitorsResult {
   monitors: MonitorWithSelections[];

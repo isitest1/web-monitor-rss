@@ -1,6 +1,6 @@
 import { generateId } from '../lib/ids.js';
-import { getSystemFeed } from '../db/repositories/feeds.js';
 import { insertChange } from '../db/repositories/changes.js';
+import { getOrCreateSystemFeed } from '../rss/auto-feed.js';
 import { computeSystemFingerprint } from './fingerprint.js';
 
 export interface SystemEventInput {
@@ -10,19 +10,17 @@ export interface SystemEventInput {
   key: string;
   now: string;
   description: string;
+  /** Used only if the system feed does not exist yet and must be created. */
+  origin: string;
 }
 
 /**
  * Creates a change row on the system feed for a heartbeat or per-monitor
- * fetch-failure event. Returns null (and creates nothing) if no feed of
- * kind='system' has been configured yet.
+ * fetch-failure event. The system feed self-bootstraps on first use (there
+ * is no admin "create feed" step for it).
  */
-export async function createSystemEvent(
-  db: D1Database,
-  input: SystemEventInput,
-): Promise<string | null> {
-  const systemFeed = await getSystemFeed(db);
-  if (!systemFeed) return null;
+export async function createSystemEvent(db: D1Database, input: SystemEventInput): Promise<string> {
+  const systemFeed = await getOrCreateSystemFeed(db, input.origin, input.now);
   const fingerprint = await computeSystemFingerprint(
     input.changeType === 'SYSTEM_ALERT' ? 'alert' : 'recovery',
     input.key,

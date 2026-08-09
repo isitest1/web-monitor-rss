@@ -26,12 +26,14 @@ export interface ProcessRunnerResultParams {
   db: D1Database;
   monitor: Monitor;
   request: RunnerResultRequest;
+  /** Used only if a system-feed alert/recovery event must be created. */
+  origin: string;
 }
 
 export async function processRunnerResult(
   params: ProcessRunnerResultParams,
 ): Promise<RunnerResultResponse> {
-  const { db, monitor, request } = params;
+  const { db, monitor, request, origin } = params;
   const now = nowIso();
 
   await insertCheck(db, {
@@ -51,10 +53,10 @@ export async function processRunnerResult(
   const priorState = await getMonitorState(db, monitor.id);
 
   if (request.status !== 'SUCCESS') {
-    return handleFailure(db, monitor, priorState?.consecutiveFailures ?? 0, request, now);
+    return handleFailure(db, monitor, priorState?.consecutiveFailures ?? 0, request, now, origin);
   }
 
-  return handleSuccess(db, monitor, priorState, request, now);
+  return handleSuccess(db, monitor, priorState, request, now, origin);
 }
 
 async function handleFailure(
@@ -63,6 +65,7 @@ async function handleFailure(
   priorFailures: number,
   request: RunnerResultRequest,
   now: string,
+  origin: string,
 ): Promise<RunnerResultResponse> {
   const consecutiveFailures = priorFailures + 1;
   const patch: MonitorStateUpsert = {
@@ -84,6 +87,7 @@ async function handleFailure(
         sourceUrl: monitor.url,
         key: `monitor-fetch-failure:${monitor.id}`,
         now,
+        origin,
         description: `${monitor.name} の取得に${consecutiveFailures}回連続で失敗しました（${request.status}）。`,
       });
     }
@@ -98,6 +102,7 @@ async function handleSuccess(
   priorState: Awaited<ReturnType<typeof getMonitorState>>,
   request: RunnerResultRequest,
   now: string,
+  origin: string,
 ): Promise<RunnerResultResponse> {
   const newHash = await computeResultHash(request.values);
   const wasFailing = (priorState?.consecutiveFailures ?? 0) > 0;
@@ -112,6 +117,7 @@ async function handleSuccess(
         sourceUrl: monitor.url,
         key: `monitor-fetch-failure:${monitor.id}`,
         now,
+        origin,
         description: `${monitor.name} の取得が復旧しました。`,
       });
     }

@@ -155,6 +155,14 @@ export async function getMonitorNamesByIds(
   return map;
 }
 
+export async function countMonitorsForFeed(db: D1Database, feedId: string): Promise<number> {
+  const row = await db
+    .prepare('SELECT COUNT(*) as count FROM monitors WHERE feed_id = ?')
+    .bind(feedId)
+    .first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
 export async function deleteMonitor(db: D1Database, id: string): Promise<void> {
   await db.prepare('DELETE FROM selections WHERE monitor_id = ?').bind(id).run();
   await db.prepare('DELETE FROM monitor_state WHERE monitor_id = ?').bind(id).run();

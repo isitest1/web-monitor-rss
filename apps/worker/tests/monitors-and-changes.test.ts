@@ -91,6 +91,70 @@ describe('monitor result processing and change detection', () => {
     }
   });
 
+  it('auto-creates a dedicated Feed when a monitor is created without feedId', async () => {
+    const admin = await loginAsAdmin(env);
+    const res = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: '自動Feed監視',
+        url: 'https://example.com/auto-feed',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    expect(res.status).toBe(201);
+    const created = await res.json<MonitorWithSelections>();
+    expect(created.feedId).toBeTruthy();
+    expect(created.feedId).not.toBe(feed.id);
+
+    const feedRes = await admin.request(`/api/feeds/${created.feedId}`);
+    expect(feedRes.status).toBe(200);
+    const createdFeed = await feedRes.json<{ name: string; rssUrl: string | null }>();
+    expect(createdFeed.name).toBe('自動Feed監視');
+    expect(createdFeed.rssUrl).toBeTruthy();
+  });
+
+  it('deletes a monitor and its dedicated feed together, but leaves a shared feed alone', async () => {
+    const admin = await loginAsAdmin(env);
+    const soloRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: '単独監視',
+        url: 'https://example.com/solo',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    const solo = await soloRes.json<MonitorWithSelections>();
+
+    const deleteRes = await admin.request(`/api/monitors/${solo.id}`, { method: 'DELETE' });
+    expect(deleteRes.status).toBe(204);
+
+    const feedRes = await admin.request(`/api/feeds/${solo.feedId}`);
+    expect(feedRes.status).toBe(404);
+
+    // A second monitor explicitly assigned to point at `feed` (which
+    // `monitor` from beforeEach also uses) makes it genuinely shared —
+    // deleting one must not take the feed down while the other still uses it.
+    const secondRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: '共有Feed監視2',
+        url: 'https://example.com/shared-2',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    const second = await secondRes.json<MonitorWithSelections>();
+
+    const deleteSharedRes = await admin.request(`/api/monitors/${monitor.id}`, {
+      method: 'DELETE',
+    });
+    expect(deleteSharedRes.status).toBe(204);
+    const sharedFeedRes = await admin.request(`/api/feeds/${feed.id}`);
+    expect(sharedFeedRes.status).toBe(200);
+
+    await admin.request(`/api/monitors/${second.id}`, { method: 'DELETE' });
+  });
+
   it('lets an existing monitor be moved to a different feed via PUT', async () => {
     const admin = await loginAsAdmin(env);
     const otherFeedRes = await admin.request('/api/feeds', {

@@ -25,28 +25,6 @@ export async function installChromeStub(page: Page): Promise<void> {
       runtime: {
         sendMessage: async (message: { type: string; payload?: unknown }) => {
           sentMessages.push(message);
-          if (message.type === 'LIST_FEEDS') {
-            return {
-              ok: true,
-              data: {
-                feeds: [
-                  {
-                    id: 'feed-1',
-                    name: 'テストFeed',
-                    slug: 'test-feed',
-                    kind: 'content',
-                    enabled: true,
-                    rssTokenPrefix: null,
-                    rssTokenIssuedAt: null,
-                    rssTokenLastUsedAt: null,
-                    rssTokenStatus: null,
-                    createdAt: '2025-01-01T00:00:00.000Z',
-                    updatedAt: '2025-01-01T00:00:00.000Z',
-                  },
-                ],
-              },
-            };
-          }
           if (message.type === 'CREATE_MONITOR') {
             (window as unknown as { __lastCreatePayload: unknown }).__lastCreatePayload =
               message.payload;
@@ -63,7 +41,5 @@ export async function loadFixtureWithContentScript(page: Page, path: string): Pr
   await page.goto(path);
   await installChromeStub(page);
   await page.addScriptTag({ path: contentScriptPath });
-  // The panel renders synchronously; the LIST_FEEDS round trip resolves on
-  // a microtask shortly after.
   await page.waitForTimeout(50);
 }

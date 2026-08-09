@@ -2,17 +2,16 @@ import { Hono } from 'hono';
 import type { Env } from '../env.js';
 import { deriveCsrfToken, getAdminSessionRow } from '../auth/admin-session.js';
 import { loginPage } from './pages/login.js';
-import { monitorsPage, type MonitorRow } from './pages/monitors.js';
+import { monitorsPage, type MonitorFeedInfo, type MonitorRow } from './pages/monitors.js';
 import { monitorHistoryPage } from './pages/monitor-history.js';
-import { feedsPage } from './pages/feeds.js';
 import { listMonitors, getMonitorById } from '../db/repositories/monitors.js';
 import { listMonitorStates } from '../db/repositories/monitor-state.js';
-import { listFeeds, listFeedsWithVisibleToken } from '../db/repositories/feeds.js';
-import { buildRssUrl } from '../rss/token.js';
+import { getSystemFeed, listFeedsWithVisibleToken } from '../db/repositories/feeds.js';
 import { getSystemState } from '../db/repositories/system-state.js';
 import { listChecksByMonitor } from '../db/repositories/checks.js';
 import { listChangesByMonitor } from '../db/repositories/changes.js';
 import { requireParam } from '../lib/errors.js';
+import { buildRssUrl } from '../rss/token.js';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
@@ -32,22 +31,36 @@ adminRoutes.get('/monitors', async (c) => {
   const session = await getAdminSessionRow(c);
   if (!session) return c.redirect('/login');
 
-  const [monitors, feeds, systemState] = await Promise.all([
+  const origin = new URL(c.req.url).origin;
+  const [monitors, systemState, systemFeed, feeds] = await Promise.all([
     listMonitors(c.env.DB),
-    listFeeds(c.env.DB),
     getSystemState(c.env.DB),
+    getSystemFeed(c.env.DB),
+    listFeedsWithVisibleToken(c.env.DB),
   ]);
   const states = await listMonitorStates(c.env.DB);
-  const feedNameById = new Map(feeds.map((f) => [f.id, f.name]));
 
-  const rows: MonitorRow[] = monitors.map((monitor) => ({
-    monitor,
-    state: states.get(monitor.id) ?? null,
-    feedName: feedNameById.get(monitor.feedId) ?? '(不明)',
-  }));
+  const feedsById = new Map(feeds.map((f) => [f.id, f]));
+
+  // Each Monitor owns exactly one dedicated Feed in this deployment, so its
+  // row can look the Feed up directly rather than offering a picker.
+  const rows: MonitorRow[] = monitors.map((monitor) => {
+    const feed = feedsById.get(monitor.feedId);
+    const feedInfo: MonitorFeedInfo = {
+      id: monitor.feedId,
+      rssUrl: feed?.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
+      rssTokenStatus: feed?.rssTokenStatus ?? null,
+    };
+    return { monitor, state: states.get(monitor.id) ?? null, feed: feedInfo };
+  });
+
+  const systemFeedRecord = systemFeed ? feedsById.get(systemFeed.id) : undefined;
+  const systemFeedUrl = systemFeedRecord?.rssTokenPlaintext
+    ? buildRssUrl(origin, systemFeedRecord.rssTokenPlaintext)
+    : null;
 
   const csrfToken = await deriveCsrfToken(c.env, session.sessionToken);
-  return c.html(monitorsPage(rows, feeds, systemState, csrfToken));
+  return c.html(monitorsPage(rows, systemFeedUrl, systemState, csrfToken));
 });
 
 adminRoutes.get('/monitors/:id/history', async (c) => {
@@ -62,18 +75,4 @@ adminRoutes.get('/monitors/:id/history', async (c) => {
     listChangesByMonitor(c.env.DB, monitor.id, 100),
   ]);
   return c.html(monitorHistoryPage(monitor, checks, changes));
-});
-
-adminRoutes.get('/feeds', async (c) => {
-  const session = await getAdminSessionRow(c);
-  if (!session) return c.redirect('/login');
-
-  const origin = new URL(c.req.url).origin;
-  const feeds = await listFeedsWithVisibleToken(c.env.DB);
-  const feedsWithUrl = feeds.map((feed) => ({
-    ...feed,
-    rssUrl: feed.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
-  }));
-  const csrfToken = await deriveCsrfToken(c.env, session.sessionToken);
-  return c.html(feedsPage(feedsWithUrl, csrfToken));
 });

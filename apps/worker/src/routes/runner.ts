@@ -58,7 +58,8 @@ runnerRoutes.post('/results', async (c) => {
     }
   }
 
-  const result = await processRunnerResult({ db: c.env.DB, monitor, request: parsed.data });
+  const origin = new URL(c.req.url).origin;
+  const result = await processRunnerResult({ db: c.env.DB, monitor, request: parsed.data, origin });
   return c.json(result);
 });
 
@@ -79,7 +80,7 @@ runnerRoutes.post('/heartbeat', async (c) => {
   } else {
     if (parsed.data.success !== false) {
       await recordRunnerSuccess(c.env.DB, now);
-      await evaluateHeartbeat(c.env.DB, now);
+      await evaluateHeartbeat(c.env.DB, new URL(c.req.url).origin, now);
     }
   }
   return c.json({ ok: true });

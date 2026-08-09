@@ -1,12 +1,18 @@
-import type { Feed, Monitor, MonitorState, SystemState } from '@web-monitor/shared';
+import type { Monitor, MonitorState, SystemState } from '@web-monitor/shared';
 import { monitorStatusLabel } from '@web-monitor/shared';
 import { layout } from './layout.js';
 import { escapeHtml, escapeJs } from './escape.js';
 
+export interface MonitorFeedInfo {
+  id: string;
+  rssUrl: string | null;
+  rssTokenStatus: string | null;
+}
+
 export interface MonitorRow {
   monitor: Monitor;
   state: MonitorState | null;
-  feedName: string;
+  feed: MonitorFeedInfo;
 }
 
 function statusClass(status: string, enabled: boolean): string {
@@ -33,43 +39,60 @@ function formatDate(iso: string | null): string {
 
 function healthBanner(state: SystemState): string {
   if (state.alertStatus === 'healthy') return '';
-  return `<div class="card" style="border: 2px solid #c62828;">
+  return `<div class="card alert-card">
     <strong class="status-error">稼働停止の疑い</strong>
     <p class="muted">Runnerの最終正常実行: ${escapeHtml(formatDate(state.lastRunnerSuccessAt))}</p>
   </div>`;
 }
 
-function feedSelect(monitor: Monitor, contentFeeds: Feed[]): string {
-  const options = contentFeeds
-    .map(
-      (feed) =>
-        `<option value="${escapeHtml(feed.id)}"${feed.id === monitor.feedId ? ' selected' : ''}>${escapeHtml(feed.name)}</option>`,
-    )
-    .join('');
-  return `<select class="feed-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
+function systemFeedCard(systemFeedUrl: string | null): string {
+  if (!systemFeedUrl) return '';
+  return `<div class="card">
+    <div class="top-bar">
+      <div>
+        <h2 style="margin-bottom:0;">システム稼働通知RSS</h2>
+        <p class="muted" style="margin-top:0.2rem;">稼働警告・回復通知の配信専用Feedです。RSSリーダーに登録しておくことをおすすめします。</p>
+      </div>
+    </div>
+    <div class="actions-row">
+      <input type="text" readonly value="${escapeHtml(systemFeedUrl)}" class="rss-url" style="flex:1; min-width: 260px;" onclick="this.select()" />
+      <a href="${escapeHtml(systemFeedUrl)}" target="_blank" rel="noopener">開く</a>
+      <button class="secondary copy-btn" data-url="${escapeHtml(systemFeedUrl)}">コピー</button>
+    </div>
+  </div>`;
+}
+
+function feedCell(feed: MonitorFeedInfo): string {
+  if (feed.rssUrl) {
+    return `<div class="actions-row">
+      <a href="${escapeHtml(feed.rssUrl)}" target="_blank" rel="noopener" title="${escapeHtml(feed.rssUrl)}">RSSを見る</a>
+      <button class="link copy-btn" data-url="${escapeHtml(feed.rssUrl)}">コピー</button>
+    </div>`;
+  }
+  if (feed.rssTokenStatus === 'active') {
+    return '<span class="muted">URL未記録（再発行で表示されます）</span>';
+  }
+  return '<span class="muted">失効済み</span>';
 }
 
 export function monitorsPage(
   rows: MonitorRow[],
-  feeds: Feed[],
+  systemFeedUrl: string | null,
   systemState: SystemState,
   csrfToken: string,
 ): string {
-  const contentFeeds = feeds.filter((f) => f.kind === 'content');
   const body = `
 ${healthBanner(systemState)}
+${systemFeedCard(systemFeedUrl)}
 <div class="card">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h1>Watchlist</h1>
-    <div>
-      <a href="/feeds">Feed管理</a> ・
-      <button class="secondary" id="logout-btn">ログアウト</button>
-    </div>
+  <div class="top-bar">
+    <h1 style="margin-bottom:0;">Watchlist</h1>
+    <button class="secondary" id="logout-btn">ログアウト</button>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Monitor名</th><th>Feed</th><th>現在値</th><th>状態</th>
+        <th>Monitor名</th><th>現在値</th><th>状態</th><th>RSS</th>
         <th>最終確認</th><th>最終成功</th><th>最終変更</th><th>連続失敗</th><th>操作</th>
       </tr>
     </thead>
@@ -80,17 +103,21 @@ ${healthBanner(systemState)}
           const cls = statusClass(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
           return `<tr>
             <td>${escapeHtml(row.monitor.name)}</td>
-            <td>${feedSelect(row.monitor, contentFeeds)}</td>
             <td>${escapeHtml(summarizeValue(row.state))}</td>
             <td class="${cls}">${escapeHtml(label)}</td>
+            <td>${feedCell(row.feed)}</td>
             <td>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</td>
             <td>${row.state?.consecutiveFailures ?? 0}</td>
             <td>
-              <a href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a> ・
-              <a href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a> ・
-              <button class="secondary toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
+              <div class="actions-row">
+                <a href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a>
+                <a href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
+                <button class="secondary toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
+                <button class="danger-link delete-btn" data-id="${escapeHtml(row.monitor.id)}" data-name="${escapeHtml(row.monitor.name)}">削除</button>
+                <button class="link rotate-btn" data-feed-id="${escapeHtml(row.feed.id)}">トークン再発行</button>
+              </div>
             </td>
           </tr>`;
         })
@@ -98,9 +125,8 @@ ${healthBanner(systemState)}
     </tbody>
   </table>
   ${rows.length === 0 ? '<p class="muted">監視対象がまだありません。Chrome拡張機能で選択して登録してください。</p>' : ''}
-  <p class="muted">Feed列のプルダウンで、MonitorをどのRSS Feedに配信するか変更できます。</p>
 </div>
-<p class="muted">GitHub ActionsのworkflowをActions画面からworkflow_dispatchで手動実行すると、即時に確認できます。</p>
+<p class="muted">GitHub ActionsのworkflowをActions画面からworkflow_dispatchで手動実行すると、即時に確認できます。RSS URLにはアクセス用のトークンが含まれています。他人に共有しないでください。</p>
 <script>
 const csrfToken = '${escapeJs(csrfToken)}';
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -119,15 +145,32 @@ document.querySelectorAll('.toggle-btn').forEach((btn) => {
     window.location.reload();
   });
 });
-document.querySelectorAll('.feed-select').forEach((select) => {
-  select.addEventListener('change', async () => {
-    const id = select.getAttribute('data-id');
+document.querySelectorAll('.delete-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const id = btn.getAttribute('data-id');
+    const name = btn.getAttribute('data-name');
+    if (!confirm(name + ' を削除します。よろしいですか？（履歴も削除されます）')) return;
     await fetch('/api/monitors/' + id, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
-      body: JSON.stringify({ feedId: select.value }),
+      method: 'DELETE',
+      headers: { 'x-csrf-token': csrfToken },
     });
     window.location.reload();
+  });
+});
+document.querySelectorAll('.rotate-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const feedId = btn.getAttribute('data-feed-id');
+    if (!confirm('現在のRSS URLは無効になり、新しいURLに置き換わります。よろしいですか？')) return;
+    const res = await fetch('/api/feeds/' + feedId + '/rotate-token', {
+      method: 'POST',
+      headers: { 'x-csrf-token': csrfToken },
+    });
+    if (res.ok) window.location.reload();
+  });
+});
+document.querySelectorAll('.copy-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(btn.getAttribute('data-url'));
   });
 });
 </script>

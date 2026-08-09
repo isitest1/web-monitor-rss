@@ -3,7 +3,6 @@ import { getConfig } from '../lib/storage.js';
 import {
   createMonitor,
   getMonitor,
-  listFeeds,
   listMonitors,
   pingApi,
   setMonitorEnabled,
@@ -15,8 +14,6 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResult<u
 
   try {
     switch (message.type) {
-      case 'LIST_FEEDS':
-        return { ok: true, data: { feeds: await listFeeds(config) } };
       case 'LIST_MONITORS':
         return { ok: true, data: { monitors: await listMonitors(config) } };
       case 'GET_MONITOR':

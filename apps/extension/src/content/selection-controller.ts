@@ -3,7 +3,7 @@ import {
   pickBestCandidate,
   SelectionNavigator,
 } from '@web-monitor/selector-engine';
-import type { CreateMonitorRequest, ExtractionMode, Feed, MonitorMode } from '@web-monitor/shared';
+import type { CreateMonitorRequest, ExtractionMode, MonitorMode } from '@web-monitor/shared';
 import { createOverlayRoot, positionBox, type OverlayRoot } from './overlay/shadow-root.js';
 import { renderPanel, type PanelState } from './panel.js';
 import { createDraft, createFullPageDraft, type SelectionDraft } from './selection-draft.js';
@@ -15,8 +15,6 @@ export class SelectionController {
   private selections: SelectionDraft[] = [];
   private monitorMode: MonitorMode = 'single';
   private monitorName = document.title.slice(0, 200);
-  private feeds: Feed[] = [];
-  private feedId = '';
   private statusMessage = '';
   private saving = false;
   private active = false;
@@ -24,20 +22,11 @@ export class SelectionController {
   private mutationObserver: MutationObserver | null = null;
   private repositionScheduled = false;
 
-  async start(): Promise<void> {
+  start(): void {
     if (this.active) return;
     this.active = true;
     this.overlay = createOverlayRoot();
     this.attachListeners();
-    this.renderPanel();
-
-    const result = await sendExtensionMessage<{ feeds: Feed[] }>({ type: 'LIST_FEEDS' });
-    if (result.ok) {
-      this.feeds = result.data.feeds.filter((f) => f.kind === 'content');
-      this.feedId = this.feeds[0]?.id ?? '';
-    } else {
-      this.statusMessage = result.error;
-    }
     this.renderPanel();
   }
 
@@ -210,8 +199,6 @@ export class SelectionController {
     const state: PanelState = {
       monitorName: this.monitorName,
       monitorMode: this.monitorMode,
-      feeds: this.feeds,
-      feedId: this.feedId,
       selections: this.selections,
       statusMessage: this.statusMessage,
       saving: this.saving,
@@ -223,9 +210,6 @@ export class SelectionController {
       onMonitorModeChange: (mode) => {
         this.monitorMode = mode;
         this.renderPanel();
-      },
-      onFeedChange: (feedId) => {
-        this.feedId = feedId;
       },
       onLabelChange: (id, label) => {
         const selection = this.selections.find((s) => s.id === id);
@@ -249,13 +233,12 @@ export class SelectionController {
   }
 
   private async save(): Promise<void> {
-    if (this.selections.length === 0 || !this.feedId) return;
+    if (this.selections.length === 0) return;
     this.saving = true;
     this.statusMessage = '';
     this.renderPanel();
 
     const payload: CreateMonitorRequest = {
-      feedId: this.feedId,
       name: this.monitorName || document.title || location.href,
       url: location.href,
       monitorMode: this.monitorMode,

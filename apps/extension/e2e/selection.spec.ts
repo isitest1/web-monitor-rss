@@ -6,9 +6,8 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
     await loadFixtureWithContentScript(page, '/static.html');
   });
 
-  test('renders the panel and loads the available feed', async ({ page }) => {
+  test('renders the panel', async ({ page }) => {
     await expect(page.locator('.panel h2')).toHaveText('Web Monitor RSS - 選択');
-    await expect(page.locator('.panel select option')).toContainText(['テストFeed']);
   });
 
   test('shows a hover box over the element under the cursor', async ({ page }) => {
@@ -64,7 +63,7 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
   test('list mode picks the repeating-structure selector and defaults to list extraction', async ({
     page,
   }) => {
-    await page.locator('.panel select').nth(1).selectOption('list');
+    await page.locator('.panel select').nth(0).selectOption('list');
     await page.locator('#item-list .item').first().click();
 
     await expect(page.locator('.panel li select')).toHaveValue('list');
@@ -120,7 +119,6 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
     );
     expect(payload).toMatchObject({
       name: '見出し監視',
-      feedId: 'feed-1',
       monitorMode: 'single',
     });
     const selections = payload!.selections as Array<{ label: string; selector: string }>;

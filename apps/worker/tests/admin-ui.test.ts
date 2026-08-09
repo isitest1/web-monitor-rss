@@ -27,17 +27,11 @@ describe('admin UI pages', () => {
     expect(await res.text()).toContain('ログイン');
   });
 
-  it('renders the Watchlist with monitor state and a stale-heartbeat banner', async () => {
+  it('renders the merged Watchlist with a monitor, its own RSS link, delete/rotate actions, and a stale-heartbeat banner', async () => {
     const admin = await loginAsAdmin(env);
-    const feedRes = await admin.request('/api/feeds', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'UI Feed', slug: 'ui-feed', kind: 'content' }),
-    });
-    const feed = await feedRes.json<FeedWithPlaintextToken>();
     const monitorRes = await admin.request('/api/monitors', {
       method: 'POST',
       body: JSON.stringify({
-        feedId: feed.id,
         name: 'UI Monitor',
         url: 'https://example.com/ui',
         selections: [
@@ -57,9 +51,31 @@ describe('admin UI pages', () => {
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain('UI Monitor');
-    expect(html).toContain('UI Feed');
     expect(html).toContain('稼働停止の疑い');
     expect(html).toContain(`/monitors/${monitor.id}/history`);
+    expect(html).toContain('RSSを見る');
+    expect(html).toContain('delete-btn');
+    expect(html).toContain('rotate-btn');
+    // No more manual Feed picker or separate "create feed" section.
+    expect(html).not.toContain('feed-select');
+    expect(html).not.toContain('create-feed-form');
+  });
+
+  it('shows the auto-bootstrapped system feed URL once a stale alert exists', async () => {
+    const admin = await loginAsAdmin(env);
+    await env.DB.prepare(
+      "UPDATE system_state SET alert_status = 'stale', last_runner_success_at = ? WHERE id = 1",
+    )
+      .bind('2020-01-01T00:00:00.000Z')
+      .run();
+    await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'システム稼働通知', slug: 'system-auto', kind: 'system' }),
+    });
+
+    const page = await admin.request('/monitors');
+    const html = await page.text();
+    expect(html).toContain('システム稼働通知RSS');
   });
 
   it('renders the monitor history page with change and check rows', async () => {
@@ -94,18 +110,9 @@ describe('admin UI pages', () => {
     expect(page.status).toBe(404);
   });
 
-  it('renders the feeds management page with a create form and token status', async () => {
+  it('no longer serves a separate /feeds management page', async () => {
     const admin = await loginAsAdmin(env);
-    await admin.request('/api/feeds', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Feeds Page Feed', slug: 'feeds-page-feed', kind: 'content' }),
-    });
-
     const page = await admin.request('/feeds');
-    expect(page.status).toBe(200);
-    const html = await page.text();
-    expect(html).toContain('Feeds Page Feed');
-    expect(html).toContain('create-feed-form');
-    expect(html).toContain('有効');
+    expect(page.status).toBe(404);
   });
 });

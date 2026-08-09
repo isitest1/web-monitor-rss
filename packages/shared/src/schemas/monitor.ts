@@ -75,7 +75,9 @@ export const monitorWithSelectionsSchema = monitorSchema.extend({
 export type MonitorWithSelections = z.infer<typeof monitorWithSelectionsSchema>;
 
 export const createMonitorRequestSchema = z.object({
-  feedId: z.string().min(1),
+  // Optional: if omitted, the Worker auto-creates a dedicated content Feed
+  // for this Monitor (the personal-use default is one Feed per Monitor).
+  feedId: z.string().min(1).optional(),
   name: z.string().min(1).max(200),
   url: monitorUrlSchema,
   monitorMode: monitorModeSchema.default('single'),

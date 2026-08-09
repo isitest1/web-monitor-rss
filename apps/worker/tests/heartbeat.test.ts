@@ -52,8 +52,8 @@ describe('runner heartbeat and watchdog', () => {
       .bind(staleTimestamp)
       .run();
 
-    await runWatchdogCron(env.DB, new Date().toISOString());
-    await runWatchdogCron(env.DB, new Date().toISOString());
+    await runWatchdogCron(env.DB, 'http://localhost:8787', new Date().toISOString());
+    await runWatchdogCron(env.DB, 'http://localhost:8787', new Date().toISOString());
 
     let health = await (await testApp().request('/health', {}, env)).json<HealthResponse>();
     expect(health.status).toBe('stale');
@@ -73,5 +73,26 @@ describe('runner heartbeat and watchdog', () => {
     rssXml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
     expect(rssXml).toContain('稼働回復');
     expect(rssXml.split('<item>').length - 1).toBe(2);
+  });
+
+  it('self-bootstraps a system feed on the first alert when none exists yet', async () => {
+    const admin = await loginAsAdmin(env);
+    const before = await admin.request('/api/feeds');
+    const { feeds: feedsBefore } = await before.json<{ feeds: unknown[] }>();
+    expect(feedsBefore).toHaveLength(0);
+
+    const staleTimestamp = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+    await env.DB.prepare('UPDATE system_state SET last_runner_success_at = ? WHERE id = 1')
+      .bind(staleTimestamp)
+      .run();
+    await runWatchdogCron(env.DB, 'http://localhost:8787', new Date().toISOString());
+
+    const after = await admin.request('/api/feeds');
+    const { feeds: feedsAfter } = await after.json<{
+      feeds: Array<{ kind: string; rssUrl: string | null }>;
+    }>();
+    expect(feedsAfter).toHaveLength(1);
+    expect(feedsAfter[0]?.kind).toBe('system');
+    expect(feedsAfter[0]?.rssUrl).toBeTruthy();
   });
 });

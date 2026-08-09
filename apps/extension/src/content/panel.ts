@@ -1,11 +1,9 @@
-import type { ExtractionMode, Feed, MonitorMode } from '@web-monitor/shared';
+import type { ExtractionMode, MonitorMode } from '@web-monitor/shared';
 import { computePreview, type SelectionDraft } from './selection-draft.js';
 
 export interface PanelState {
   monitorName: string;
   monitorMode: MonitorMode;
-  feeds: Feed[];
-  feedId: string;
   selections: SelectionDraft[];
   statusMessage: string;
   saving: boolean;
@@ -14,7 +12,6 @@ export interface PanelState {
 export interface PanelCallbacks {
   onMonitorNameChange: (value: string) => void;
   onMonitorModeChange: (mode: MonitorMode) => void;
-  onFeedChange: (feedId: string) => void;
   onLabelChange: (id: string, label: string) => void;
   onExtractionModeChange: (id: string, mode: ExtractionMode) => void;
   onRemove: (id: string) => void;
@@ -53,26 +50,6 @@ export function renderPanel(
   nameLabel.appendChild(nameInput);
   panel.appendChild(nameLabel);
 
-  const feedLabel = document.createElement('label');
-  feedLabel.textContent = 'Feed';
-  const feedSelect = document.createElement('select');
-  for (const feed of state.feeds) {
-    const option = document.createElement('option');
-    option.value = feed.id;
-    option.textContent = feed.name;
-    if (feed.id === state.feedId) option.selected = true;
-    feedSelect.appendChild(option);
-  }
-  feedSelect.addEventListener('change', () => callbacks.onFeedChange(feedSelect.value));
-  feedLabel.appendChild(feedSelect);
-  panel.appendChild(feedLabel);
-  if (state.feeds.length === 0) {
-    const hint = document.createElement('p');
-    hint.className = 'hint';
-    hint.textContent = '先に管理画面でFeedを作成してください。';
-    panel.appendChild(hint);
-  }
-
   const modeLabel = document.createElement('label');
   modeLabel.textContent = 'Monitorの種類';
   const modeSelect = document.createElement('select');
@@ -95,7 +72,7 @@ export function renderPanel(
   const hint = document.createElement('p');
   hint.className = 'hint';
   hint.textContent =
-    '要素をクリックまたはEnterで選択に追加します。矢印キーで親・子・兄弟要素へ移動、Deleteで選択を削除、Escapeで終了します。';
+    '要素をクリックまたはEnterで選択に追加します。矢印キーで親・子・兄弟要素へ移動、Deleteで選択を削除、Escapeで終了します。保存すると専用のRSS Feedが自動的に作られます。';
   panel.appendChild(hint);
 
   const fullPageButton = document.createElement('button');
@@ -125,7 +102,7 @@ export function renderPanel(
   saveButton.type = 'button';
   saveButton.className = 'save-btn';
   saveButton.textContent = state.saving ? '保存中...' : '保存';
-  saveButton.disabled = state.saving || state.selections.length === 0 || !state.feedId;
+  saveButton.disabled = state.saving || state.selections.length === 0;
   saveButton.addEventListener('click', () => callbacks.onSave());
   actions.appendChild(saveButton);
 

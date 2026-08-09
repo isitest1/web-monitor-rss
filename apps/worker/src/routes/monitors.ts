@@ -8,8 +8,10 @@ import type { Env } from '../env.js';
 import { errorJson, requireParam } from '../lib/errors.js';
 import { generateId } from '../lib/ids.js';
 import { nowIso } from '../lib/time.js';
-import { getFeedById } from '../db/repositories/feeds.js';
+import { deleteFeed, getFeedById } from '../db/repositories/feeds.js';
+import { createDedicatedFeedForMonitor } from '../rss/auto-feed.js';
 import {
+  countMonitorsForFeed,
   deleteMonitor,
   getMonitorById,
   insertMonitor,
@@ -76,17 +78,27 @@ monitorRoutes.post('/', requireCsrfForAdmin, async (c) => {
       parsed.error.issues[0]?.message ?? 'invalid monitor',
     );
   }
-  const feed = await getFeedById(c.env.DB, parsed.data.feedId);
-  if (!feed)
-    return errorJson(c, 400, 'INVALID_REQUEST', 'feedId does not reference an existing feed');
   if (!isMonitorUrlAllowed(c.env, parsed.data.url)) {
     return errorJson(c, 400, 'INVALID_REQUEST', 'URL is not allowed');
   }
 
   const now = nowIso();
+  const origin = new URL(c.req.url).origin;
+
+  let feedId = parsed.data.feedId;
+  if (feedId) {
+    const feed = await getFeedById(c.env.DB, feedId);
+    if (!feed)
+      return errorJson(c, 400, 'INVALID_REQUEST', 'feedId does not reference an existing feed');
+  } else {
+    // One Feed per Monitor by default: no manual Feed picking needed.
+    const feed = await createDedicatedFeedForMonitor(c.env.DB, parsed.data.name, origin, now);
+    feedId = feed.id;
+  }
+
   const monitor = await insertMonitor(c.env.DB, {
     id: generateId(),
-    feedId: parsed.data.feedId,
+    feedId,
     name: parsed.data.name,
     url: parsed.data.url,
     monitorMode: parsed.data.monitorMode,
@@ -146,6 +158,18 @@ monitorRoutes.delete('/:id', requireCsrfForAdmin, async (c) => {
   const existing = await getMonitorById(c.env.DB, requireParam(c, 'id'));
   if (!existing) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
   await deleteMonitor(c.env.DB, existing.id);
+
+  // Clean up the dedicated Feed this Monitor owned, but only if it is a
+  // content Feed that nothing else still references (never touches the
+  // system Feed, and never deletes a Feed still shared by another Monitor).
+  const feed = await getFeedById(c.env.DB, existing.feedId);
+  if (feed && feed.kind === 'content') {
+    const remaining = await countMonitorsForFeed(c.env.DB, feed.id);
+    if (remaining === 0) {
+      await deleteFeed(c.env.DB, feed.id);
+    }
+  }
+
   return c.body(null, 204);
 });
 
