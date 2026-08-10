@@ -4,7 +4,7 @@
 
 個人専用のWebページ監視サービスを構築する。
 
-本サービスは、Chrome拡張機能でDistillに近い操作性のVisual Selectorを提供し、選択したWebページの範囲をサーバー側で1日1回確認する。前回から変更された場合は、状態と変更履歴を保存し、RSSフィードとして配信する。
+本サービスは、Chrome拡張機能でDistillに近い操作性のVisual Selectorを提供し、選択したWebページの範囲をMonitorごとに設定した間隔（既定1日1回、最短1時間）で確認する。確認はGitHub Actions側のサーバー実行、または拡張機能によるローカル実行のいずれかをMonitorごとに選べる。前回から変更された場合は、状態と変更履歴を保存し、RSSフィードとして配信する。
 
 利用者のMacを常時起動しておく必要がない構成とする。開発はDockerを利用したVS Code Dev Container内で行う。本番環境の定期確認はGitHub ActionsとPlaywrightで実行する。Cloudflare WorkersとD1は、API、管理画面、永続データ保存、RSS配信を担当する。
 
@@ -53,7 +53,7 @@
 - テキスト、HTML、リンクURL、画像URL、指定属性値の取得
 - 単一要素モードと繰り返し一覧モード
 - Monitor名、Feed、比較方法、抽出規則、有効・無効の設定
-- 1日1回のサーバー側確認
+- Monitorごとに設定可能な確認間隔（既定1日1回、最短1時間）と、サーバー側（GitHub Actions）／ローカル側（Chrome拡張機能のバックグラウンドタブ）の実行方式選択
 - 正確な実行時刻を前提としない運用
 - GitHub Actions上のPlaywrightによる取得
 - Cloudflare Worker APIおよび管理画面
@@ -78,7 +78,7 @@
 - AIによる意味解析
 - スクリーンショット履歴
 - 画像ファイル自体の保存
-- 高頻度の確認
+- 1時間未満の高頻度確認（最短間隔は1時間）
 - 正確な時刻での実行
 - Cloudflare Queues
 - 初期版でのXPathおよび任意JavaScript Selector
@@ -89,6 +89,7 @@
 ```
 Chrome拡張機能
     |  監視範囲の選択とMonitor登録
+    |  execution_mode=localのMonitorはバックグラウンドタブで確認も実行
     v
 Cloudflare Worker API + 管理画面
     |
@@ -125,18 +126,20 @@ Cloudflare Worker RSS Endpoint
 - 抽出方法と比較条件を設定する。
 - Monitor定義をWorker APIへ送信する。
 - 簡易Watchlistと直近の状態を表示する。
+- execution_modeがlocalに設定されたMonitorについて、Chromeが起動している間、確認期限が来たものをバックグラウンド（非アクティブ）タブで確認し、結果をWorker APIへ送信する。タブはフォーカスを奪わず、確認後に閉じる。
 
-Chrome拡張機能は定期監視を実行しないこと。拡張機能は専用のExtension APIトークンで認証し、管理画面のCookieセッションを使用しないこと。
+Chrome拡張機能は、execution_modeがlocalに設定されたMonitorに限り、Monitorごとの確認間隔に従ってバックグラウンドタブで定期確認を実行してよい。それ以外の目的の定期監視は行わないこと。拡張機能は専用のExtension APIトークンで認証し、管理画面のCookieセッションを使用しないこと。
 
 #### Cloudflare Worker
 
 - 管理画面、Chrome拡張機能、Runnerからの要求を認証する。認証方式は要求元ごとに分ける（管理画面はCookieセッション、拡張機能はExtensionトークン、RunnerはRunnerトークン）。
 - Monitor定義とRunner結果を検証する。
 - Feed、Monitor、Selection、現在状態、確認履歴、変更履歴をD1へ保存する。
-- GitHub Actions Runnerへ有効なMonitor定義を返す。
+- GitHub Actions RunnerおよびChrome拡張機能それぞれへ、execution_modeとcheck_interval_secに基づき確認期限が来たMonitor定義のみを返す。
 - 正常取得した正規化済み値を前回値と比較する。
 - 初回の基準値を設定する。
 - 同じ変更を重複せずに記録する。
+- Chrome拡張機能からのローカル確認結果を、Runner結果と同じ検証・変更検出処理で受け付ける（ただしRunnerハートビートは更新しない）。
 - 正しいRSS 2.0 XMLを生成する。
 - 管理画面を配信する。
 - RSSトークンを発行、検証、失効、再発行する。トークンは平文を保存せず、ハッシュで照合する。
@@ -144,8 +147,8 @@ Chrome拡張機能は定期監視を実行しないこと。拡張機能は専�
 
 #### GitHub ActionsおよびPlaywright
 
-- 1日1回および手動要求時に実行する。
-- Worker APIから有効なMonitorを取得する。
+- 毎時のscheduleおよび手動要求時に実行する。実際の確認頻度はMonitorごとのcheck_interval_secで決まる（Worker側の間引き、§8.1）。
+- Worker APIから確認期限が来たMonitor（execution_modeがserverのもの）を取得する。
 - Chromiumを一定のlocale、timezone、viewportで起動する。
 - 設定されたすべてのSelectionを抽出する。
 - 値を正規化する。ただし、データベース上の変更判定はWorker側で行う。
@@ -314,9 +317,12 @@ fingerprintは診断用とし、Selector失敗時に別の要素へ自動的に�
 
 ### 8.1 実行頻度
 
-- GitHub Actionsのscheduleで1日1回実行する。
+- 確認間隔はMonitorごとに設定する（check_interval_sec、既定24時間=1日1回、最短1時間）。
+- サーバー側（GitHub Actions Runner）とローカル側（Chrome拡張機能のバックグラウンドタブ）のどちらで確認するかをMonitorごとにexecution_modeで選択する。既定はserver。
+- GitHub Actionsのscheduleは毎時実行し、Worker側（GET /api/runner/monitors）で確認期限が来たexecution_mode=serverのMonitorだけを実際に確認する間引き方式とする。
+- execution_mode=localのMonitorは、Chromeが起動している間、拡張機能が同様の期限判定でバックグラウンドタブから確認する（GET /api/extension/monitors）。GitHub Actions Runnerはこれらを取得しない。
 - 正確な実行時刻を保証しない。
-- 手動実行用にworkflow_dispatchを用意する。
+- 手動実行用にサーバー側はworkflow_dispatchを用意する。ローカル側のMonitorは拡張機能のポップアップから個別に即時実行できる。
 - 必要であれば0～30分のランダム遅延を設定可能にするが、既定では無効とする。
 
 ### 8.2 Browser設定
@@ -411,6 +417,8 @@ name
 url
 monitor_mode
 comparison_rule
+execution_mode           -- server または local（既定server）
+check_interval_sec       -- 確認間隔（秒）。既定86400、最短3600
 enabled
 order_index
 created_at
@@ -557,6 +565,9 @@ GET    /api/runner/monitors
 POST   /api/runner/results
 POST   /api/runner/heartbeat    -- 実行の開始と完了を通知する
 
+GET    /api/extension/monitors  -- execution_mode=localで確認期限が来たMonitor定義を返す
+POST   /api/extension/results   -- 拡張機能によるローカル確認結果を送信する（Runner結果と同じ検証・変更検出処理）
+
 GET    /rss/:token.xml
 GET    /health                  -- 稼働状態（healthy / stale）と最終正常実行時刻を返す
 ```
@@ -605,6 +616,8 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - 最終成功日時
 - 最終変更日時
 - 連続失敗回数
+- 実行方式（サーバー／ローカル）の切り替え
+- 確認間隔の設定
 - 有効・無効の切り替え
 - 元ページを開く
 - 選択範囲を編集する
@@ -641,6 +654,7 @@ RSSトークンの再発行を行った場合、新しい平文トークンを�
 - Runnerではredirect先も再検証する。
 - 初期版では認証が必要なページを監視しない。
 - 拡張機能から文書全体のHTMLを送信しない。
+- 拡張機能のローカル確認は、execution_modeがlocalに設定されたMonitorのURLだけを対象とし、host_permissionsで許可された任意ページへの汎用的なアクセスを他の目的に使わない。
 - Cookieおよびbrowser profileを保存しない。
 - 通常logへ抽出内容を記録しない。
 - GitHubおよびCloudflareの秘密値は、それぞれのsecret storeへ保存する。
@@ -698,6 +712,9 @@ pnpm ciは、format確認、lint、型検査、unit test、build、安定したi
 - RSS XMLの妥当性、escape、安定GUID、ETag、304 response
 - 空のD1に対するmigration
 - Runnerのエラー分類
+- Monitorごとの確認間隔（check_interval_sec）による間引き（due判定）の境界値
+- execution_modeによるRunner向け・拡張機能向けMonitor一覧の振り分けと、それぞれのtoken分離
+- 拡張機能のDOM抽出とRunnerのPlaywright抽出の結果整合性（同じstatus code・正規化）
 
 ## 15. GitHub Actions
 
@@ -713,7 +730,7 @@ pull requestおよびpush時に次を実行する。
 
 ### 15.2 daily-monitor.yml
 
-- cronで1日1回実行する。
+- cronで毎時実行する。実際のMonitorごとの確認頻度はWorker側の間引き（check_interval_sec）で決まる（§8.1）。
 - 任意のMonitor IDを指定できるworkflow_dispatchを用意する。
 - API base URLとRunner tokenはGitHub Secretsから読み込む。
 - 同じschedule実行が重ならないようconcurrency groupを設定する。

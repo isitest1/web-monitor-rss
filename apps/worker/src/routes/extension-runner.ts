@@ -1,29 +1,32 @@
 import { Hono } from 'hono';
-import {
-  heartbeatRequestSchema,
-  runnerResultRequestSchema,
-  type RunnerMonitorListResponse,
-} from '@web-monitor/shared';
+import { runnerResultRequestSchema, type RunnerMonitorListResponse } from '@web-monitor/shared';
 import type { Env } from '../env.js';
 import { errorJson } from '../lib/errors.js';
 import { nowIso } from '../lib/time.js';
-import { requireRunnerToken } from '../auth/middleware.js';
+import { requireExtensionOnlyToken } from '../auth/middleware.js';
 import { listDueMonitors, getMonitorById } from '../db/repositories/monitors.js';
 import {
   listSelectionsByMonitorIds,
   listSelectionsByMonitor,
 } from '../db/repositories/selections.js';
 import { processRunnerResult } from '../changes/detect.js';
-import { recordRunnerStart, recordRunnerSuccess } from '../db/repositories/system-state.js';
-import { evaluateHeartbeat } from '../watchdog/check.js';
 
-export const runnerRoutes = new Hono<{ Bindings: Env }>();
+/**
+ * Mirrors /api/runner/* (apps/worker/src/routes/runner.ts) for Monitors
+ * with execution_mode 'local': the Chrome extension fetches its own due
+ * Monitors and submits results the same way the GitHub Actions Runner does,
+ * reusing processRunnerResult so baseline/change-detection behavior is
+ * identical regardless of which source ran the check. Unlike the Runner
+ * routes, this never touches system_state/heartbeat (§8.6's watchdog stays
+ * scoped to the Runner; local checks are best-effort while Chrome is open).
+ */
+export const extensionRunnerRoutes = new Hono<{ Bindings: Env }>();
 
-runnerRoutes.use('*', requireRunnerToken);
+extensionRunnerRoutes.use('*', requireExtensionOnlyToken);
 
-runnerRoutes.get('/monitors', async (c) => {
+extensionRunnerRoutes.get('/monitors', async (c) => {
   const monitors = await listDueMonitors(c.env.DB, {
-    executionMode: 'server',
+    executionMode: 'local',
     nowIso: nowIso(),
   });
   const selectionsByMonitor = await listSelectionsByMonitorIds(
@@ -39,7 +42,7 @@ runnerRoutes.get('/monitors', async (c) => {
   return c.json(response);
 });
 
-runnerRoutes.post('/results', async (c) => {
+extensionRunnerRoutes.post('/results', async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = runnerResultRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -64,27 +67,4 @@ runnerRoutes.post('/results', async (c) => {
   const origin = new URL(c.req.url).origin;
   const result = await processRunnerResult({ db: c.env.DB, monitor, request: parsed.data, origin });
   return c.json(result);
-});
-
-runnerRoutes.post('/heartbeat', async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const parsed = heartbeatRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return errorJson(
-      c,
-      400,
-      'INVALID_REQUEST',
-      parsed.error.issues[0]?.message ?? 'invalid heartbeat',
-    );
-  }
-  const now = nowIso();
-  if (parsed.data.event === 'start') {
-    await recordRunnerStart(c.env.DB, parsed.data.runId, now);
-  } else {
-    if (parsed.data.success !== false) {
-      await recordRunnerSuccess(c.env.DB, now);
-      await evaluateHeartbeat(c.env.DB, new URL(c.req.url).origin, now);
-    }
-  }
-  return c.json({ ok: true });
 });

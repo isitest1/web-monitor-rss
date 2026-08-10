@@ -39,23 +39,22 @@
     "SYSTEM_RECOVERY"
   ];
 
-  // ../../packages/shared/src/status-label.ts
-  function monitorStatusLabel(status, enabled) {
-    if (!enabled) return "Monitor\u7121\u52B9";
-    switch (status) {
-      case "UNCHECKED":
-        return "\u672A\u78BA\u8A8D";
-      case "BASELINED":
-      case "OK":
-        return "\u5909\u66F4\u306A\u3057";
-      case "CHANGED":
-        return "\u5909\u66F4\u3042\u308A";
-      case "SELECTOR_NOT_FOUND":
-      case "SELECTOR_NOT_UNIQUE":
-        return "Selector\u304C\u898B\u3064\u304B\u3089\u306A\u3044";
-      default:
-        return "\u78BA\u8A8D\u5931\u6557";
+  // ../../packages/shared/src/status-classify.ts
+  function isStatusCoded(error) {
+    return typeof error === "object" && error !== null && "statusCode" in error && "message" in error && typeof error.statusCode === "string";
+  }
+  function classifyException(error) {
+    if (isStatusCoded(error)) {
+      return { statusCode: error.statusCode, message: error.message };
     }
+    const message = error instanceof Error ? error.message : String(error);
+    if (/timeout/i.test(message)) {
+      return { statusCode: "TIMEOUT", message };
+    }
+    if (/net::ERR_CONNECTION_REFUSED|net::ERR_NAME_NOT_RESOLVED|net::ERR_/.test(message)) {
+      return { statusCode: "HTTP_ERROR", message };
+    }
+    return { statusCode: "ERROR", message };
   }
 
   // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
@@ -4100,6 +4099,8 @@
   var NEVER = INVALID;
 
   // ../../packages/shared/src/normalize.ts
+  var ZERO_WIDTH_PATTERN = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+  var NBSP_PATTERN = /[\u00A0\u202F\u2007]/g;
   var MAX_REGEX_PATTERN_LENGTH = 200;
   var MAX_REMOVE_STRINGS = 20;
   var normalizationConfigSchema = external_exports.object({
@@ -4110,6 +4111,64 @@
     removeStrings: external_exports.array(external_exports.string().max(200)).max(MAX_REMOVE_STRINGS).default([]),
     caseInsensitive: external_exports.boolean().default(false)
   }).strict();
+  var DEFAULT_NORMALIZATION_CONFIG = {
+    extractFirstNumber: false,
+    parsePrice: false,
+    removeStrings: [],
+    caseInsensitive: false
+  };
+  function normalizeDefault(raw) {
+    return raw.replace(NBSP_PATTERN, " ").replace(ZERO_WIDTH_PATTERN, "").replace(/\s+/g, " ").trim();
+  }
+  var FIRST_NUMBER_PATTERN = /-?\d[\d,]*(?:\.\d+)?/;
+  var PRICE_PATTERN = /([^\d\s]*)\s*(-?\d[\d,]*(?:\.\d+)?)\s*([^\d\s]*)/;
+  function extractFirstNumber(value) {
+    const match = FIRST_NUMBER_PATTERN.exec(value);
+    return match ? match[0].replace(/,/g, "") : value;
+  }
+  function parsePrice(value) {
+    const match = PRICE_PATTERN.exec(value);
+    if (!match) return value;
+    const [, prefix, amount, suffix] = match;
+    const currency = (prefix ?? suffix ?? "").trim();
+    const numeric = (amount ?? "").replace(/,/g, "");
+    return currency ? `${currency} ${numeric}` : numeric;
+  }
+  function applyRegex(value, pattern, flags) {
+    try {
+      const re = new RegExp(pattern, flags ?? "");
+      const match = re.exec(value);
+      return match ? match[0] : value;
+    } catch {
+      return value;
+    }
+  }
+  function normalizeForComparison(raw, config = DEFAULT_NORMALIZATION_CONFIG) {
+    let value = normalizeDefault(raw);
+    for (const remove of config.removeStrings) {
+      if (remove.length === 0) continue;
+      value = value.split(remove).join("");
+    }
+    value = normalizeDefault(value);
+    if (config.regexPattern) {
+      value = applyRegex(value, config.regexPattern, config.regexFlags);
+    }
+    if (config.parsePrice) {
+      value = parsePrice(value);
+    } else if (config.extractFirstNumber) {
+      value = extractFirstNumber(value);
+    }
+    if (config.caseInsensitive) {
+      value = value.toLowerCase();
+    }
+    return value;
+  }
+  function normalizeValue(raw, config = DEFAULT_NORMALIZATION_CONFIG) {
+    return {
+      displayValue: normalizeDefault(raw),
+      comparisonValue: normalizeForComparison(raw, config)
+    };
+  }
 
   // ../../packages/shared/src/schemas/feed.ts
   var feedKindSchema = external_exports.enum(["content", "system"]);
@@ -4167,6 +4226,7 @@
     createdAt: external_exports.string(),
     updatedAt: external_exports.string()
   });
+  var HTML_EXTRACTION_MAX_LENGTH = 2e4;
   var selectionInputSchema = external_exports.object({
     label: external_exports.string().min(1).max(200),
     selectorType: selectorTypeSchema,
@@ -4374,98 +4434,144 @@
     })
   });
 
-  // src/lib/messages.ts
-  async function sendExtensionMessage(message) {
-    try {
-      return await chrome.runtime.sendMessage(message);
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  // ../../packages/selector-engine/src/extract-dom.ts
+  var SELECTOR_WAIT_TIMEOUT_MS = 1e4;
+  var SELECTOR_POLL_INTERVAL_MS = 200;
+  var SelectionExtractionError = class extends Error {
+    statusCode;
+    constructor(statusCode, message) {
+      super(message);
+      this.statusCode = statusCode;
+      this.name = "SelectionExtractionError";
     }
-  }
-
-  // src/lib/default-config.ts
-  var DEFAULT_CONFIG = {
-    apiBaseUrl: "https://web-monitor-rss-worker.kouhei1.workers.dev",
-    extensionToken: "001b62fe084115ab799dbe28de83e05629dcb8f2da3279555c7a0d51b6b5b6f5"
   };
-
-  // src/lib/storage.ts
-  var STORAGE_KEY = "webMonitorConfig";
-  async function getConfig() {
-    const stored = await chrome.storage.local.get(STORAGE_KEY);
-    const value = stored[STORAGE_KEY];
-    if (value?.apiBaseUrl && value.extensionToken) return value;
-    return DEFAULT_CONFIG;
-  }
-
-  // src/popup/popup.ts
-  async function startSelection() {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["content-script.js"]
-    });
-    window.close();
-  }
-  function escapeHtml(value) {
-    const div = document.createElement("div");
-    div.textContent = value;
-    return div.innerHTML;
-  }
-  async function runLocalCheckNow(monitorId, button) {
-    button.disabled = true;
-    button.textContent = "\u78BA\u8A8D\u4E2D...";
-    const result = await sendExtensionMessage({ type: "RUN_LOCAL_CHECK_NOW", monitorId });
-    button.disabled = false;
-    button.textContent = result.ok ? "\u78BA\u8A8D\u3057\u307E\u3057\u305F" : "\u4ECA\u3059\u3050\u78BA\u8A8D (\u5931\u6557)";
-    setTimeout(() => void loadWatchlist(), 1500);
-  }
-  function renderWatchlist(container, monitors) {
-    if (monitors.length === 0) {
-      container.innerHTML = '<p class="empty">\u76E3\u8996\u5BFE\u8C61\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002</p>';
-      return;
+  function resolveAbsoluteUrl(raw) {
+    if (!raw) return "";
+    try {
+      return new URL(raw, document.baseURI).toString();
+    } catch {
+      return raw;
     }
-    const list = document.createElement("ul");
-    for (const monitor of monitors) {
-      const item = document.createElement("li");
-      const label = monitorStatusLabel(monitor.state?.status ?? "UNCHECKED", monitor.enabled);
-      const badge = monitor.executionMode === "local" ? '<span class="badge">\u30ED\u30FC\u30AB\u30EB</span>' : "";
-      item.innerHTML = `<strong>${escapeHtml(monitor.name)}</strong>${badge}<br /><span class="status">${escapeHtml(label)}</span>`;
-      if (monitor.executionMode === "local") {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "check-now-btn";
-        button.textContent = "\u4ECA\u3059\u3050\u78BA\u8A8D";
-        button.addEventListener("click", () => void runLocalCheckNow(monitor.id, button));
-        item.appendChild(button);
+  }
+  function queryAll(selection) {
+    if (selection.selectorType === "document") {
+      return [document.documentElement];
+    }
+    try {
+      return Array.from(document.querySelectorAll(selection.selector));
+    } catch {
+      return [];
+    }
+  }
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  async function waitForAtLeastOneMatch(selection) {
+    const deadline = Date.now() + SELECTOR_WAIT_TIMEOUT_MS;
+    let matches = queryAll(selection);
+    while (matches.length === 0 && Date.now() < deadline) {
+      await sleep(SELECTOR_POLL_INTERVAL_MS);
+      matches = queryAll(selection);
+    }
+    return matches;
+  }
+  function extractOne(element, selection) {
+    switch (selection.extractionMode) {
+      case "text":
+        return element.textContent ?? "";
+      case "html": {
+        const html = element.innerHTML;
+        if (html.length > HTML_EXTRACTION_MAX_LENGTH) {
+          throw new SelectionExtractionError(
+            "CONTENT_TOO_LARGE",
+            `extracted HTML exceeds ${HTML_EXTRACTION_MAX_LENGTH} characters`
+          );
+        }
+        return html;
       }
-      list.appendChild(item);
+      case "attribute":
+        if (!selection.attributeName) return "";
+        return element.getAttribute(selection.attributeName) ?? "";
+      case "link":
+        return resolveAbsoluteUrl(element.getAttribute("href"));
+      case "image": {
+        const currentSrc = element instanceof HTMLImageElement ? element.currentSrc : "";
+        if (currentSrc) return currentSrc;
+        return resolveAbsoluteUrl(element.getAttribute("src"));
+      }
+      case "list":
+        throw new Error("extractOne must not be called for list extraction mode");
     }
-    container.innerHTML = "";
-    container.appendChild(list);
   }
-  async function loadWatchlist() {
-    const container = document.getElementById("watchlist");
-    if (!container) return;
-    const result = await sendExtensionMessage({
-      type: "LIST_MONITORS"
+  function extractListItem(element) {
+    return element.textContent ?? "";
+  }
+  async function extractSelectionFromDom(selection) {
+    const matches = await waitForAtLeastOneMatch(selection);
+    if (matches.length === 0) {
+      throw new SelectionExtractionError(
+        "SELECTOR_NOT_FOUND",
+        `no element matched selector for "${selection.label}"`
+      );
+    }
+    if (selection.extractionMode === "list") {
+      const rawValues = matches.map((element2) => extractListItem(element2));
+      const normalized2 = rawValues.map((raw2) => normalizeValue(raw2, selection.normalization));
+      return {
+        selectionId: selection.id,
+        label: selection.label,
+        displayValue: normalized2.map((n) => n.displayValue),
+        comparisonValue: normalized2.map((n) => n.comparisonValue)
+      };
+    }
+    if (matches.length > 1) {
+      throw new SelectionExtractionError(
+        "SELECTOR_NOT_UNIQUE",
+        `selector for "${selection.label}" matched ${matches.length} elements, expected exactly 1`
+      );
+    }
+    const [element] = matches;
+    if (!element) {
+      throw new SelectionExtractionError(
+        "SELECTOR_NOT_FOUND",
+        `no element matched selector for "${selection.label}"`
+      );
+    }
+    const raw = extractOne(element, selection);
+    const normalized = normalizeValue(raw, selection.normalization);
+    return {
+      selectionId: selection.id,
+      label: selection.label,
+      displayValue: normalized.displayValue,
+      comparisonValue: normalized.comparisonValue
+    };
+  }
+  async function extractAllSelectionsFromDom(selections) {
+    const values = [];
+    for (const selection of selections) {
+      values.push(await extractSelectionFromDom(selection));
+    }
+    return values;
+  }
+
+  // src/content/local-check.ts
+  function isRunLocalExtractionMessage(message) {
+    return typeof message === "object" && message !== null && message.type === "RUN_LOCAL_EXTRACTION";
+  }
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!isRunLocalExtractionMessage(message)) return void 0;
+    extractAllSelectionsFromDom(message.selections).then((values) => {
+      const result = { ok: true, values };
+      sendResponse(result);
+    }).catch((error) => {
+      const classified = error instanceof SelectionExtractionError ? { statusCode: error.statusCode, message: error.message } : classifyException(error);
+      const result = {
+        ok: false,
+        statusCode: classified.statusCode,
+        message: classified.message
+      };
+      sendResponse(result);
     });
-    if (!result.ok) {
-      container.innerHTML = `<p class="empty">${escapeHtml(result.error)}</p>`;
-      return;
-    }
-    renderWatchlist(container, result.data.monitors);
-  }
-  async function setupAdminLink() {
-    const link = document.getElementById("open-admin");
-    if (!(link instanceof HTMLAnchorElement)) return;
-    const config = await getConfig();
-    link.href = `${config.apiBaseUrl}/monitors`;
-  }
-  document.getElementById("start-selection")?.addEventListener("click", () => {
-    void startSelection();
+    return true;
   });
-  void loadWatchlist();
-  void setupAdminLink();
 })();

@@ -1,4 +1,4 @@
-import type { ComparisonRule, Monitor, MonitorMode } from '@web-monitor/shared';
+import type { ComparisonRule, ExecutionMode, Monitor, MonitorMode } from '@web-monitor/shared';
 
 interface MonitorRow {
   id: string;
@@ -7,6 +7,8 @@ interface MonitorRow {
   url: string;
   monitor_mode: string;
   comparison_rule: string;
+  execution_mode: string;
+  check_interval_sec: number;
   enabled: number;
   order_index: number;
   created_at: string;
@@ -21,6 +23,8 @@ function mapRow(row: MonitorRow): Monitor {
     url: row.url,
     monitorMode: row.monitor_mode as MonitorMode,
     comparisonRule: row.comparison_rule as ComparisonRule,
+    executionMode: row.execution_mode as ExecutionMode,
+    checkIntervalSec: row.check_interval_sec,
     enabled: row.enabled === 1,
     orderIndex: row.order_index,
     createdAt: row.created_at,
@@ -35,6 +39,8 @@ export interface InsertMonitorInput {
   url: string;
   monitorMode: MonitorMode;
   comparisonRule: ComparisonRule;
+  executionMode: ExecutionMode;
+  checkIntervalSec: number;
   enabled: boolean;
   orderIndex: number;
   createdAt: string;
@@ -45,9 +51,9 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
   await db
     .prepare(
       `INSERT INTO monitors (
-        id, feed_id, name, url, monitor_mode, comparison_rule, enabled, order_index,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, feed_id, name, url, monitor_mode, comparison_rule, execution_mode,
+        check_interval_sec, enabled, order_index, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       input.id,
@@ -56,6 +62,8 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
       input.url,
       input.monitorMode,
       input.comparisonRule,
+      input.executionMode,
+      input.checkIntervalSec,
       input.enabled ? 1 : 0,
       input.orderIndex,
       input.createdAt,
@@ -79,9 +87,29 @@ export async function listMonitors(db: D1Database): Promise<Monitor[]> {
   return results.map(mapRow);
 }
 
-export async function listEnabledMonitors(db: D1Database): Promise<Monitor[]> {
+/**
+ * Monitors due for a check under the given execution_mode: enabled, and
+ * either never checked or whose last check is at least check_interval_sec
+ * old as of `nowIso`. Backs both GET /api/runner/monitors (executionMode
+ * 'server') and GET /api/extension/monitors (executionMode 'local'), so a
+ * more-frequent scheduler tick (hourly GitHub Actions cron, or the
+ * extension's alarm) still only actually contacts a site once its own
+ * configured interval has elapsed.
+ */
+export async function listDueMonitors(
+  db: D1Database,
+  params: { executionMode: ExecutionMode; nowIso: string },
+): Promise<Monitor[]> {
   const { results } = await db
-    .prepare('SELECT * FROM monitors WHERE enabled = 1 ORDER BY order_index ASC, created_at ASC')
+    .prepare(
+      `SELECT m.* FROM monitors m
+       LEFT JOIN monitor_state ms ON ms.monitor_id = m.id
+       WHERE m.enabled = 1 AND m.execution_mode = ?
+         AND (ms.last_checked_at IS NULL
+              OR (unixepoch(?) - unixepoch(ms.last_checked_at)) >= m.check_interval_sec)
+       ORDER BY m.order_index ASC, m.created_at ASC`,
+    )
+    .bind(params.executionMode, params.nowIso)
     .all<MonitorRow>();
   return results.map(mapRow);
 }
@@ -92,6 +120,8 @@ export interface UpdateMonitorInput {
   url?: string | undefined;
   monitorMode?: MonitorMode | undefined;
   comparisonRule?: ComparisonRule | undefined;
+  executionMode?: ExecutionMode | undefined;
+  checkIntervalSec?: number | undefined;
   enabled?: boolean | undefined;
   orderIndex?: number | undefined;
 }
@@ -108,7 +138,8 @@ export async function updateMonitor(
   await db
     .prepare(
       `UPDATE monitors
-       SET feed_id = ?, name = ?, url = ?, monitor_mode = ?, comparison_rule = ?, enabled = ?, order_index = ?, updated_at = ?
+       SET feed_id = ?, name = ?, url = ?, monitor_mode = ?, comparison_rule = ?,
+           execution_mode = ?, check_interval_sec = ?, enabled = ?, order_index = ?, updated_at = ?
        WHERE id = ?`,
     )
     .bind(
@@ -117,6 +148,8 @@ export async function updateMonitor(
       merged.url,
       merged.monitorMode,
       merged.comparisonRule,
+      merged.executionMode,
+      merged.checkIntervalSec,
       merged.enabled ? 1 : 0,
       merged.orderIndex,
       updatedAt,

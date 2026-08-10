@@ -63,6 +63,35 @@ function systemFeedCard(systemFeedUrl: string | null): string {
   </div>`;
 }
 
+const CHECK_INTERVAL_PRESETS: Array<{ seconds: number; label: string }> = [
+  { seconds: 3600, label: '1時間ごと' },
+  { seconds: 10800, label: '3時間ごと' },
+  { seconds: 21600, label: '6時間ごと' },
+  { seconds: 43200, label: '12時間ごと' },
+  { seconds: 86400, label: '24時間ごと（既定）' },
+];
+
+function executionModeSelect(monitor: Monitor): string {
+  const options = [
+    { value: 'server', label: 'サーバー（GitHub Actions）' },
+    { value: 'local', label: 'ローカル（拡張機能）' },
+  ]
+    .map(
+      (opt) =>
+        `<option value="${opt.value}" ${monitor.executionMode === opt.value ? 'selected' : ''}>${opt.label}</option>`,
+    )
+    .join('');
+  return `<select class="execution-mode-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
+}
+
+function checkIntervalSelect(monitor: Monitor): string {
+  const options = CHECK_INTERVAL_PRESETS.map(
+    (preset) =>
+      `<option value="${preset.seconds}" ${monitor.checkIntervalSec === preset.seconds ? 'selected' : ''}>${preset.label}</option>`,
+  ).join('');
+  return `<select class="check-interval-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
+}
+
 function feedCell(feed: MonitorFeedInfo): string {
   if (feed.rssUrl) {
     return `<div class="actions-row">
@@ -94,6 +123,7 @@ ${systemFeedCard(systemFeedUrl)}
     <thead>
       <tr>
         <th>Monitor名</th><th>現在値</th><th>状態</th><th>RSS</th><th>RSS件数</th>
+        <th>実行方式</th><th>確認間隔</th>
         <th>最終確認</th><th>最終成功</th><th>最終変更</th><th>連続失敗</th><th>操作</th>
       </tr>
     </thead>
@@ -108,6 +138,8 @@ ${systemFeedCard(systemFeedUrl)}
             <td class="${cls}">${escapeHtml(label)}</td>
             <td>${feedCell(row.feed)}</td>
             <td>${row.feed.itemCount}件</td>
+            <td>${executionModeSelect(row.monitor)}</td>
+            <td>${checkIntervalSelect(row.monitor)}</td>
             <td>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</td>
@@ -116,7 +148,11 @@ ${systemFeedCard(systemFeedUrl)}
               <div class="actions-row">
                 <a href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a>
                 <a href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
-                <button class="secondary check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>
+                ${
+                  row.monitor.executionMode === 'local'
+                    ? '<span class="muted" title="ローカルモードのMonitorは拡張機能のポップアップから実行してください">今すぐ確認は拡張機能から</span>'
+                    : `<button class="secondary check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>`
+                }
                 <button class="secondary toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
                 <button class="danger-link delete-btn" data-id="${escapeHtml(row.monitor.id)}" data-name="${escapeHtml(row.monitor.name)}">削除</button>
                 <button class="link rotate-btn" data-feed-id="${escapeHtml(row.feed.id)}">トークン再発行</button>
@@ -150,6 +186,28 @@ document.querySelectorAll('.check-btn').forEach((btn) => {
     } else {
       alert('確認のリクエストに失敗しました。しばらくしてから再度お試しください。');
     }
+  });
+});
+document.querySelectorAll('.execution-mode-select').forEach((select) => {
+  select.addEventListener('change', async () => {
+    const id = select.getAttribute('data-id');
+    await fetch('/api/monitors/' + id, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+      body: JSON.stringify({ executionMode: select.value }),
+    });
+    window.location.reload();
+  });
+});
+document.querySelectorAll('.check-interval-select').forEach((select) => {
+  select.addEventListener('change', async () => {
+    const id = select.getAttribute('data-id');
+    await fetch('/api/monitors/' + id, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+      body: JSON.stringify({ checkIntervalSec: Number(select.value) }),
+    });
+    window.location.reload();
   });
 });
 document.querySelectorAll('.toggle-btn').forEach((btn) => {

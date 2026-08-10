@@ -7,6 +7,15 @@ export type MonitorMode = z.infer<typeof monitorModeSchema>;
 export const comparisonRuleSchema = z.enum(['normalized_equality']);
 export type ComparisonRule = z.infer<typeof comparisonRuleSchema>;
 
+export const executionModeSchema = z.enum(['server', 'local']);
+export type ExecutionMode = z.infer<typeof executionModeSchema>;
+
+// 1 hour floor: a prior incident had an hourly test cron crawl a small site
+// too aggressively, so every Monitor (server or local) is bounded below.
+export const MIN_CHECK_INTERVAL_SEC = 3600;
+export const DEFAULT_CHECK_INTERVAL_SEC = 86400;
+export const checkIntervalSecSchema = z.number().int().min(MIN_CHECK_INTERVAL_SEC).max(604800);
+
 const BLOCKED_HOSTNAME_PATTERNS = [
   /^localhost$/i,
   /^127\./,
@@ -62,6 +71,8 @@ export const monitorSchema = z.object({
   url: z.string().max(2000),
   monitorMode: monitorModeSchema,
   comparisonRule: comparisonRuleSchema,
+  executionMode: executionModeSchema,
+  checkIntervalSec: z.number().int().positive(),
   enabled: z.boolean(),
   orderIndex: z.number().int().nonnegative(),
   createdAt: z.string(),
@@ -82,6 +93,8 @@ export const createMonitorRequestSchema = z.object({
   url: monitorUrlSchema,
   monitorMode: monitorModeSchema.default('single'),
   comparisonRule: comparisonRuleSchema.default('normalized_equality'),
+  executionMode: executionModeSchema.default('server'),
+  checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
   enabled: z.boolean().default(true),
   orderIndex: z.number().int().nonnegative().default(0),
   selections: z.array(selectionInputSchema).min(1).max(50),
@@ -94,6 +107,8 @@ export const updateMonitorRequestSchema = z.object({
   url: monitorUrlSchema.optional(),
   monitorMode: monitorModeSchema.optional(),
   comparisonRule: comparisonRuleSchema.optional(),
+  executionMode: executionModeSchema.optional(),
+  checkIntervalSec: checkIntervalSecSchema.optional(),
   enabled: z.boolean().optional(),
   orderIndex: z.number().int().nonnegative().optional(),
   selections: z.array(selectionInputSchema).min(1).max(50).optional(),

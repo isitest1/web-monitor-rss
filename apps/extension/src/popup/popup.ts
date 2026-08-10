@@ -24,6 +24,15 @@ function escapeHtml(value: string): string {
   return div.innerHTML;
 }
 
+async function runLocalCheckNow(monitorId: string, button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  button.textContent = '確認中...';
+  const result = await sendExtensionMessage<null>({ type: 'RUN_LOCAL_CHECK_NOW', monitorId });
+  button.disabled = false;
+  button.textContent = result.ok ? '確認しました' : '今すぐ確認 (失敗)';
+  setTimeout(() => void loadWatchlist(), 1500);
+}
+
 function renderWatchlist(container: HTMLElement, monitors: MonitorListItem[]): void {
   if (monitors.length === 0) {
     container.innerHTML = '<p class="empty">監視対象がまだありません。</p>';
@@ -33,7 +42,16 @@ function renderWatchlist(container: HTMLElement, monitors: MonitorListItem[]): v
   for (const monitor of monitors) {
     const item = document.createElement('li');
     const label = monitorStatusLabel(monitor.state?.status ?? 'UNCHECKED', monitor.enabled);
-    item.innerHTML = `<strong>${escapeHtml(monitor.name)}</strong><br /><span class="status">${escapeHtml(label)}</span>`;
+    const badge = monitor.executionMode === 'local' ? '<span class="badge">ローカル</span>' : '';
+    item.innerHTML = `<strong>${escapeHtml(monitor.name)}</strong>${badge}<br /><span class="status">${escapeHtml(label)}</span>`;
+    if (monitor.executionMode === 'local') {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'check-now-btn';
+      button.textContent = '今すぐ確認';
+      button.addEventListener('click', () => void runLocalCheckNow(monitor.id, button));
+      item.appendChild(button);
+    }
     list.appendChild(item);
   }
   container.innerHTML = '';

@@ -11,7 +11,8 @@ export type ExtensionMessage =
   | { type: 'UPDATE_MONITOR'; monitorId: string; payload: UpdateMonitorRequest }
   | { type: 'SET_MONITOR_ENABLED'; monitorId: string; enabled: boolean }
   | { type: 'PING_API' }
-  | { type: 'START_SELECTION_MODE'; monitorMode: 'single' | 'list' };
+  | { type: 'START_SELECTION_MODE'; monitorMode: 'single' | 'list' }
+  | { type: 'RUN_LOCAL_CHECK_NOW'; monitorId: string };
 
 export type MessageResult<T> = { ok: true; data: T } | { ok: false; error: string };
 

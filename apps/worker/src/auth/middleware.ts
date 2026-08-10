@@ -31,6 +31,24 @@ export function requireRunnerToken(
 }
 
 /**
+ * Bearer-only, Extension-token-only (no admin cookie fallback), mirroring
+ * requireRunnerToken exactly. Used for the extension's own local-check
+ * result submission (§10/§4.1), which — unlike Monitor CRUD — must not be
+ * reachable from an admin cookie session: it is a distinct source/token per
+ * §10's "3種類の秘密値は...用途を越えて共用しない".
+ */
+export function requireExtensionOnlyToken(
+  c: Context<{ Bindings: Env }>,
+  next: Next,
+): Promise<Response | void> {
+  const token = extractBearerToken(c);
+  if (!token || !constantTimeEqual(token, c.env.EXTENSION_API_TOKEN)) {
+    return Promise.resolve(errorJson(c, 401, 'UNAUTHENTICATED', 'extension token is invalid'));
+  }
+  return next();
+}
+
+/**
  * Admin-only endpoints that still share the `actor`-based Variables shape
  * (so requireCsrfForAdmin works uniformly), but never accept the Extension
  * API token — feed lifecycle/RSS token management stays an admin-panel

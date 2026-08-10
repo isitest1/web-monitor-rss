@@ -2,11 +2,16 @@ name: Daily monitor
 
 on:
   schedule:
-    # Once daily per CLAUDE.md §8.1, at 18:00 UTC (03:00 JST). GitHub may
-    # still delay the actual start time; that is expected and not treated
-    # as a failure (§8.1/§15.2) — long-term silent stoppage is caught
-    # separately by the Worker cron watchdog.
-    - cron: '0 18 * * *'
+    # Hourly per CLAUDE.md §8.1: the actual per-Monitor check frequency is
+    # decided server-side (GET /api/runner/monitors only returns Monitors
+    # whose own check_interval_sec has elapsed, default 24h), so an hourly
+    # tick just gives shorter-interval Monitors a chance to run promptly
+    # without re-checking every Monitor every hour. Offset a few minutes
+    # past the hour to avoid GitHub's top-of-hour scheduling crunch. GitHub
+    # may still delay the actual start time; that is expected and not
+    # treated as a failure (§8.1/§15.2) — long-term silent stoppage is
+    # caught separately by the Worker cron watchdog.
+    - cron: '7 * * * *'
   workflow_dispatch:
     inputs:
       monitor_id:

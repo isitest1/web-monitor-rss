@@ -68,6 +68,8 @@ test.describe('end-to-end: Selection definition to RSS item', () => {
       url: 'http://localhost:4173/static.html',
       monitorMode: 'single',
       comparisonRule: 'normalized_equality',
+      executionMode: 'server',
+      checkIntervalSec: 86400,
       enabled: true,
       orderIndex: 0,
       selections: [

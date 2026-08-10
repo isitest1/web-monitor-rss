@@ -243,6 +243,8 @@ export class SelectionController {
       url: location.href,
       monitorMode: this.monitorMode,
       comparisonRule: 'normalized_equality',
+      executionMode: 'server',
+      checkIntervalSec: 86400,
       enabled: true,
       orderIndex: 0,
       selections: this.selections.map((selection, index) => ({

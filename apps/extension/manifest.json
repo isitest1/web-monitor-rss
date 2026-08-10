@@ -11,7 +11,16 @@
     "service_worker": "background.js"
   },
   "options_page": "options.html",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms",
+    "tabs",
+    "webNavigation",
+    "webRequest"
+  ],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

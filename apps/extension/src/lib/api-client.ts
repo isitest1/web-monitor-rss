@@ -3,6 +3,8 @@ import type {
   Feed,
   Monitor,
   MonitorWithSelections,
+  RunnerResultRequest,
+  RunnerResultResponse,
   UpdateMonitorRequest,
 } from '@web-monitor/shared';
 import type { ExtensionConfig } from './storage.js';
@@ -83,4 +85,27 @@ export async function setMonitorEnabled(
 
 export async function pingApi(config: ExtensionConfig): Promise<void> {
   await apiFetch(config, '/api/feeds');
+}
+
+// Local (execution_mode 'local') counterparts of the Runner's own
+// /api/runner/monitors and /api/runner/results — same shapes, but
+// authenticated with the Extension token and scoped to Monitors due for a
+// background-tab check right now (§4.1/§10).
+export async function listDueLocalMonitors(
+  config: ExtensionConfig,
+): Promise<MonitorWithSelections[]> {
+  const res = await apiFetch(config, '/api/extension/monitors');
+  const body = (await res.json()) as { monitors: MonitorWithSelections[] };
+  return body.monitors;
+}
+
+export async function submitExtensionResult(
+  config: ExtensionConfig,
+  payload: RunnerResultRequest,
+): Promise<RunnerResultResponse> {
+  const res = await apiFetch(config, '/api/extension/results', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return (await res.json()) as RunnerResultResponse;
 }

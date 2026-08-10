@@ -12,6 +12,7 @@ await build({
   entryPoints: {
     background: join(root, 'src/background/service-worker.ts'),
     'content-script': join(root, 'src/content/index.ts'),
+    'local-check-content': join(root, 'src/content/local-check.ts'),
     popup: join(root, 'src/popup/popup.ts'),
     options: join(root, 'src/options/options.ts'),
   },

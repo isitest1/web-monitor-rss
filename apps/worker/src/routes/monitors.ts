@@ -104,6 +104,8 @@ monitorRoutes.post('/', requireCsrfForAdmin, async (c) => {
     url: parsed.data.url,
     monitorMode: parsed.data.monitorMode,
     comparisonRule: parsed.data.comparisonRule,
+    executionMode: parsed.data.executionMode,
+    checkIntervalSec: parsed.data.checkIntervalSec,
     enabled: parsed.data.enabled,
     orderIndex: parsed.data.orderIndex,
     createdAt: now,
