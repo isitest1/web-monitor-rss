@@ -8,3 +8,4 @@ node_modules
 .pnpm-store
 .tmp
 *.md
+*.sarif
