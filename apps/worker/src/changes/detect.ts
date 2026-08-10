@@ -106,7 +106,11 @@ async function handleSuccess(
 ): Promise<RunnerResultResponse> {
   const newHash = await computeResultHash(request.values);
   const wasFailing = (priorState?.consecutiveFailures ?? 0) > 0;
-  const isBaseline = !priorState || priorState.status === 'UNCHECKED';
+  // A prior failure moves status away from UNCHECKED (to e.g. HTTP_ERROR)
+  // without ever setting currentHash, so this success can still be the
+  // Monitor's very first one; currentHash is the only reliable signal that
+  // a baseline was actually recorded (§8.4).
+  const isBaseline = !priorState || priorState.currentHash === null;
 
   if (wasFailing) {
     const alertState = await getMonitorAlertState(db, monitor.id);

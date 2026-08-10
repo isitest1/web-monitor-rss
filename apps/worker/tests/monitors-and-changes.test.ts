@@ -220,6 +220,41 @@ describe('monitor result processing and change detection', () => {
     expect(xml).not.toContain('<item>');
   });
 
+  it('still treats the first successful result as a baseline when preceded by failures', async () => {
+    // A blocked/errored site (e.g. Akamai bot-blocking GitHub Actions IPs)
+    // moves monitor_state.status away from UNCHECKED without ever setting
+    // currentHash; the next success is still the Monitor's first-ever
+    // baseline and must not be misreported as a content CHANGED item.
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        monitorId: monitor.id,
+        runId: 'run-fail-1',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: 'HTTP_ERROR',
+        durationMs: 500,
+        httpStatus: 403,
+        errorCode: 'HTTP_ERROR',
+        errorMessage: 'blocked',
+        values: [],
+      }),
+    });
+
+    const res = await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify(successPayload('初めて取得できた値', 'run-first-success')),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json<RunnerResultResponse>();
+    expect(body.status).toBe('baselined');
+    expect(body.changeId).toBeNull();
+
+    const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
+    const xml = await rssRes.text();
+    expect(xml).not.toContain('<item>');
+  });
+
   it('does not create a change when the result is unchanged', async () => {
     await runnerRequest('/api/runner/results', {
       method: 'POST',
