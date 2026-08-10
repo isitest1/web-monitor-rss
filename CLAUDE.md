@@ -34,6 +34,7 @@
 - Selectorの自動修復によって別の要素へ無断で切り替えないこと。Selectorが失敗した場合はSELECTOR_NOT_FOUNDとして記録すること。
 - ハートビートの停止検知は、コンテンツ変更の履歴とは分離し、システム用Feedへ出すこと。稼働監視の警告をコンテンツ変更として記録しないこと。
 - 完了した作業は、利用者から追加指示を待たずにGitHubへcommitおよびpushすること。push前に必要な検査をすべて実行すること。ただし、テスト失敗、秘密情報の検出、利用者による無関係な変更の混在、remote未設定、認証不能、保護ブランチへの直接push不可のいずれかに該当する場合はpushしないこと。この場合、安全であればcommitまでを行い、妨げとなった理由を具体的に報告すること。--force、公開履歴の書き換え、remoteブランチの削除、他者のcommitのamendは、明示的な指示がない限り行わないこと。
+- pushだけでは本番環境（Cloudflare Worker）には反映されない。apps/worker配下（D1 migration、Worker API、管理画面、RSS生成等）に実質的な変更を加えた場合は、pushに続けて利用者から追加指示を待たずに本番へ反映すること：D1 migrationがあればまず`wrangler d1 migrations apply <db> --remote`を実行し、その後`wrangler deploy`でWorkerをデプロイする。デプロイ直後はCloudflareエッジへの伝播に数十秒かかることがあるため、確認は少し間を置いてから行うこと。認証情報が使えない、または明確な理由でデプロイを見送る場合は、その理由を具体的に報告すること。Chrome拡張機能側（apps/extension）に変更がある場合は、ビルド済みdist/をcommitに含めるとともに、利用者自身がChromeで拡張機能を再読み込みする必要がある旨を明示すること（Claude側からは自動配布できない）。
 - commitメッセージは簡潔なConventional Commits形式にすること。例：feat: add visual selector overlay、fix: prevent failed checks from creating changes、feat: add heartbeat watchdog。
 - .env、.dev.vars、生成した認証情報、ブラウザプロファイル、機密情報を含むPlaywright trace、Cloudflareのローカル状態ディレクトリをcommitしないこと。
 
