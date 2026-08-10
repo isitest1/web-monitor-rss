@@ -9,9 +9,13 @@ import { listMonitorStates } from '../db/repositories/monitor-state.js';
 import { getSystemFeed, listFeedsWithVisibleToken } from '../db/repositories/feeds.js';
 import { getSystemState } from '../db/repositories/system-state.js';
 import { listChecksByMonitor } from '../db/repositories/checks.js';
-import { listChangesByMonitor } from '../db/repositories/changes.js';
+import {
+  countPublishedChangesGroupedByFeed,
+  listChangesByMonitor,
+} from '../db/repositories/changes.js';
 import { requireParam } from '../lib/errors.js';
 import { buildRssUrl } from '../rss/token.js';
+import { ITEM_LIMIT } from '../rss/generate.js';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
@@ -32,11 +36,12 @@ adminRoutes.get('/monitors', async (c) => {
   if (!session) return c.redirect('/login');
 
   const origin = new URL(c.req.url).origin;
-  const [monitors, systemState, systemFeed, feeds] = await Promise.all([
+  const [monitors, systemState, systemFeed, feeds, itemCountsByFeed] = await Promise.all([
     listMonitors(c.env.DB),
     getSystemState(c.env.DB),
     getSystemFeed(c.env.DB),
     listFeedsWithVisibleToken(c.env.DB),
+    countPublishedChangesGroupedByFeed(c.env.DB),
   ]);
   const states = await listMonitorStates(c.env.DB);
 
@@ -50,6 +55,9 @@ adminRoutes.get('/monitors', async (c) => {
       id: monitor.feedId,
       rssUrl: feed?.rssTokenPlaintext ? buildRssUrl(origin, feed.rssTokenPlaintext) : null,
       rssTokenStatus: feed?.rssTokenStatus ?? null,
+      // The RSS output itself caps at ITEM_LIMIT, so the displayed count
+      // should never claim more items than the feed actually serves.
+      itemCount: Math.min(itemCountsByFeed.get(monitor.feedId) ?? 0, ITEM_LIMIT),
     };
     return { monitor, state: states.get(monitor.id) ?? null, feed: feedInfo };
   });

@@ -60,6 +60,64 @@ describe('admin UI pages', () => {
     // No more manual Feed picker or separate "create feed" section.
     expect(html).not.toContain('feed-select');
     expect(html).not.toContain('create-feed-form');
+    // §: favicon/logo and full-width Watchlist layout.
+    expect(html).toContain('rel="icon"');
+    expect(html).toContain('max-width: none');
+    expect(html).toContain('0件');
+  });
+
+  it('shows the number of published RSS items for a Monitor that has changed', async () => {
+    const admin = await loginAsAdmin(env);
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Item Count Monitor',
+        url: 'https://example.com/count',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    const runnerHeaders = { authorization: `Bearer ${env.RUNNER_API_TOKEN}` };
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r1',
+          values: [{ selectionId, label: '値', displayValue: 'A', comparisonValue: 'A' }],
+        }),
+      },
+      env,
+    );
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r2',
+          values: [{ selectionId, label: '値', displayValue: 'B', comparisonValue: 'B' }],
+        }),
+      },
+      env,
+    );
+
+    const page = await admin.request('/monitors');
+    const html = await page.text();
+    expect(html).toContain('1件');
   });
 
   it('shows the auto-bootstrapped system feed URL once a stale alert exists', async () => {

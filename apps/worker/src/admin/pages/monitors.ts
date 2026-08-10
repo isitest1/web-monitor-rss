@@ -7,6 +7,7 @@ export interface MonitorFeedInfo {
   id: string;
   rssUrl: string | null;
   rssTokenStatus: string | null;
+  itemCount: number;
 }
 
 export interface MonitorRow {
@@ -92,7 +93,7 @@ ${systemFeedCard(systemFeedUrl)}
   <table>
     <thead>
       <tr>
-        <th>Monitor名</th><th>現在値</th><th>状態</th><th>RSS</th>
+        <th>Monitor名</th><th>現在値</th><th>状態</th><th>RSS</th><th>RSS件数</th>
         <th>最終確認</th><th>最終成功</th><th>最終変更</th><th>連続失敗</th><th>操作</th>
       </tr>
     </thead>
@@ -106,6 +107,7 @@ ${systemFeedCard(systemFeedUrl)}
             <td>${escapeHtml(summarizeValue(row.state))}</td>
             <td class="${cls}">${escapeHtml(label)}</td>
             <td>${feedCell(row.feed)}</td>
+            <td>${row.feed.itemCount}件</td>
             <td>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</td>
             <td>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</td>
@@ -192,5 +194,5 @@ document.querySelectorAll('.copy-btn').forEach((btn) => {
 });
 </script>
 `;
-  return layout('Watchlist', body);
+  return layout('Watchlist', body, { fullWidth: true });
 }

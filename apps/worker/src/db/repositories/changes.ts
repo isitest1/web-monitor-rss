@@ -108,6 +108,17 @@ export async function listChangesByFeed(
   return results.map(mapRow);
 }
 
+// Counts published changes grouped by feed, for showing how many items each
+// feed's RSS currently contains without a query per Monitor row.
+export async function countPublishedChangesGroupedByFeed(
+  db: D1Database,
+): Promise<Map<string, number>> {
+  const { results } = await db
+    .prepare('SELECT feed_id, COUNT(*) as count FROM changes WHERE published = 1 GROUP BY feed_id')
+    .all<{ feed_id: string; count: number }>();
+  return new Map(results.map((row) => [row.feed_id, row.count]));
+}
+
 export async function listChangesByMonitor(
   db: D1Database,
   monitorId: string,

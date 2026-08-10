@@ -3,7 +3,7 @@ import { listChangesByFeed } from '../db/repositories/changes.js';
 import { getMonitorNamesByIds } from '../db/repositories/monitors.js';
 import { escapeXml, toRfc822 } from './xml.js';
 
-const ITEM_LIMIT = 20;
+export const ITEM_LIMIT = 20;
 
 const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   CHANGED: '変更',
@@ -31,13 +31,18 @@ function buildDescription(change: Change): string {
   const newById = new Map((change.newValue ?? []).map((v) => [v.selectionId, v]));
   const ids =
     change.changedSelectionIds.length > 0 ? change.changedSelectionIds : [...newById.keys()];
+  // A Selection's label only disambiguates when more than one changed in
+  // the same event; for the common single-Selection Monitor it is just
+  // noise (e.g. an unrenamed default "選択1"), so it is omitted then.
   const lines = ids.map((id) => {
     const oldValue = oldById.get(id);
     const newValue = newById.get(id);
     const label = newValue?.label ?? oldValue?.label ?? id;
     const oldDisplay = formatDisplay(oldValue?.displayValue);
     const newDisplay = formatDisplay(newValue?.displayValue);
-    return `${label}: ${oldDisplay} → ${newDisplay}`;
+    return ids.length > 1
+      ? `${label}: ${oldDisplay} → ${newDisplay}`
+      : `${oldDisplay} → ${newDisplay}`;
   });
   return lines.join('\n');
 }
