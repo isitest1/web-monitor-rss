@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Web Monitor RSS</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        width: 320px;
+        margin: 0;
+        padding: 12px;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        background: #1a1a1a;
+        color: #fff;
+        cursor: pointer;
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 240px;
+        overflow-y: auto;
+      }
+      li {
+        padding: 6px 0;
+        border-bottom: 1px solid #eee;
+        font-size: 12px;
+      }
+      .status {
+        color: #666;
+      }
+      .empty {
+        color: #666;
+        font-size: 12px;
+      }
+      a {
+        color: #1a1a1a;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Web Monitor RSS</h1>
+    <button id="start-selection">このページで選択を開始</button>
+    <div id="watchlist">
+      <p class="empty">読み込み中...</p>
+    </div>
+    <p><a href="options.html" target="_blank">設定を開く</a></p>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+"use strict";
+(() => {
+  // src/lib/default-config.ts
+  var DEFAULT_CONFIG = {
+    apiBaseUrl: "https://web-monitor-rss-worker.kouhei1.workers.dev",
+    extensionToken: "001b62fe084115ab799dbe28de83e05629dcb8f2da3279555c7a0d51b6b5b6f5"
+  };
+
+  // src/lib/storage.ts
+  var STORAGE_KEY = "webMonitorConfig";
+  async function getConfig() {
+    const stored = await chrome.storage.local.get(STORAGE_KEY);
+    const value = stored[STORAGE_KEY];
+    if (value?.apiBaseUrl && value.extensionToken) return value;
+    return DEFAULT_CONFIG;
+  }
+  async function setConfig(config) {
+    await chrome.storage.local.set({ [STORAGE_KEY]: config });
+  }
+
+  // src/lib/messages.ts
+  async function sendExtensionMessage(message) {
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  // src/options/options.ts
+  var form = document.getElementById("config-form");
+  var apiBaseUrlInput = document.getElementById("apiBaseUrl");
+  var extensionTokenInput = document.getElementById("extensionToken");
+  var statusEl = document.getElementById("status");
+  async function loadExisting() {
+    const config = await getConfig();
+    apiBaseUrlInput.value = config.apiBaseUrl;
+    extensionTokenInput.value = config.extensionToken;
+  }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await setConfig({
+      apiBaseUrl: apiBaseUrlInput.value.trim(),
+      extensionToken: extensionTokenInput.value.trim()
+    });
+    statusEl.textContent = "\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002";
+  });
+  document.getElementById("test-connection")?.addEventListener("click", async () => {
+    await setConfig({
+      apiBaseUrl: apiBaseUrlInput.value.trim(),
+      extensionToken: extensionTokenInput.value.trim()
+    });
+    statusEl.textContent = "\u78BA\u8A8D\u4E2D...";
+    const result = await sendExtensionMessage({ type: "PING_API" });
+    statusEl.textContent = result.ok ? "\u63A5\u7D9A\u306B\u6210\u529F\u3057\u307E\u3057\u305F\u3002" : `\u63A5\u7D9A\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${result.error}`;
+  });
+  void loadExisting();
+})();

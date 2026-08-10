@@ -1,6 +1,5 @@
 node_modules/
 .pnpm-store/
-dist/
 build/
 .wrangler/
 .wrangler-e2e-state/
@@ -16,7 +15,6 @@ test-results/
 .DS_Store
 *.tsbuildinfo
 .tmp/
-apps/extension/dist/
 apps/runner/traces/
 *.sarif
 .vscode/*
