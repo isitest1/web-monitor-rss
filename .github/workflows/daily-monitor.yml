@@ -2,10 +2,12 @@ name: Daily monitor
 
 on:
   schedule:
-    # Runs once daily. GitHub may delay the actual start time; that is
-    # expected and not treated as a failure (§8.1/§15.2) — long-term
-    # silent stoppage is caught separately by the Worker cron watchdog.
-    - cron: '0 18 * * *'
+    # TEMPORARY (testing): hourly instead of the once-daily cadence in
+    # CLAUDE.md §8.1. Revert to '0 18 * * *' (once daily) once testing is
+    # done. GitHub may still delay the actual start time; that is expected
+    # and not treated as a failure (§8.1/§15.2) — long-term silent
+    # stoppage is caught separately by the Worker cron watchdog.
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       monitor_id:
