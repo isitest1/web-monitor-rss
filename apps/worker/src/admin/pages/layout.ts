@@ -102,6 +102,27 @@ export function layout(title: string, bodyHtml: string, options: LayoutOptions =
   .actions-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
   .alert-card { border-color: var(--error); background: #fff5f5; }
+  /* Grouped-field cell layout (Watchlist): several related values stacked in
+     one column instead of one column each, so a wide row of small facts
+     reads as a compact block rather than a long strip of thin columns. */
+  .table-align-top td { vertical-align: top; }
+  .cell-stack { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.82rem; }
+  .field-row { display: flex; align-items: center; gap: 0.4rem; }
+  .field-row + .field-row { margin-top: 0.35rem; }
+  .field-row select { width: auto; min-width: 200px; }
+  .field-label { flex: 0 0 auto; display: inline-block; min-width: 2.6em; font-size: 0.72rem; color: var(--muted); }
+  .actions-grid { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); gap: 0.4rem 0.5rem; }
+  .action-chip {
+    display: inline-flex; align-items: center; justify-content: center; text-align: center;
+    padding: 0.4rem 0.5rem; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.78rem; color: var(--text); text-decoration: none; background: #fff;
+    cursor: pointer; white-space: nowrap;
+  }
+  .action-chip:hover { background: var(--bg); }
+  .action-chip.danger { color: var(--error); border-color: #f3caca; }
+  .action-chip.danger:hover { background: #fff5f5; }
+  .action-chip.disabled { color: var(--muted); cursor: default; background: var(--bg); }
+  .action-chip.disabled:hover { background: var(--bg); }
 </style>
 </head>
 <body>

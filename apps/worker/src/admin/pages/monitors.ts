@@ -119,12 +119,10 @@ ${systemFeedCard(systemFeedUrl)}
     <h1 style="margin-bottom:0;">Watchlist</h1>
     <button class="secondary" id="logout-btn">ログアウト</button>
   </div>
-  <table>
+  <table class="table-align-top">
     <thead>
       <tr>
-        <th>Monitor名</th><th>現在値</th><th>状態</th><th>RSS</th><th>RSS件数</th>
-        <th>実行方式</th><th>確認間隔</th>
-        <th>最終確認</th><th>最終成功</th><th>最終変更</th><th>連続失敗</th><th>操作</th>
+        <th>Monitor</th><th>現在値</th><th>RSS</th><th>確認設定</th><th>履歴</th><th>操作</th>
       </tr>
     </thead>
     <tbody>
@@ -132,30 +130,45 @@ ${systemFeedCard(systemFeedUrl)}
         .map((row) => {
           const label = monitorStatusLabel(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
           const cls = statusClass(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
+          const failures = row.state?.consecutiveFailures ?? 0;
           return `<tr>
-            <td>${escapeHtml(row.monitor.name)}</td>
-            <td>${escapeHtml(summarizeValue(row.state))}</td>
-            <td class="${cls}">${escapeHtml(label)}</td>
-            <td>${feedCell(row.feed)}</td>
-            <td>${row.feed.itemCount}件</td>
-            <td>${executionModeSelect(row.monitor)}</td>
-            <td>${checkIntervalSelect(row.monitor)}</td>
-            <td>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</td>
-            <td>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</td>
-            <td>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</td>
-            <td>${row.state?.consecutiveFailures ?? 0}</td>
             <td>
-              <div class="actions-row">
-                <a href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a>
-                <a href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
+              <div class="cell-stack">
+                <strong>${escapeHtml(row.monitor.name)}</strong>
+                <span class="${cls}">${escapeHtml(label)}</span>
+              </div>
+            </td>
+            <td>${escapeHtml(summarizeValue(row.state))}</td>
+            <td>
+              <div class="cell-stack">
+                ${feedCell(row.feed)}
+                <span class="muted">${row.feed.itemCount}件</span>
+              </div>
+            </td>
+            <td>
+              <div class="field-row"><span class="field-label">方式</span>${executionModeSelect(row.monitor)}</div>
+              <div class="field-row"><span class="field-label">間隔</span>${checkIntervalSelect(row.monitor)}</div>
+            </td>
+            <td>
+              <div class="cell-stack">
+                <div><span class="field-label">確認</span>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</div>
+                <div><span class="field-label">成功</span>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</div>
+                <div><span class="field-label">変更</span>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</div>
+                <div><span class="field-label">失敗</span><span class="${failures > 0 ? 'status-error' : ''}">${failures}</span></div>
+              </div>
+            </td>
+            <td>
+              <div class="actions-grid">
+                <a class="action-chip" href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a>
+                <a class="action-chip" href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
                 ${
                   row.monitor.executionMode === 'local'
-                    ? '<span class="muted" title="ローカルモードのMonitorは拡張機能のポップアップから実行してください">今すぐ確認は拡張機能から</span>'
-                    : `<button class="secondary check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>`
+                    ? '<span class="action-chip disabled" title="ローカルモードのMonitorは拡張機能のポップアップから実行してください">確認は拡張機能で</span>'
+                    : `<button class="action-chip check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>`
                 }
-                <button class="secondary toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
-                <button class="danger-link delete-btn" data-id="${escapeHtml(row.monitor.id)}" data-name="${escapeHtml(row.monitor.name)}">削除</button>
-                <button class="link rotate-btn" data-feed-id="${escapeHtml(row.feed.id)}">トークン再発行</button>
+                <button class="action-chip toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
+                <button class="action-chip rotate-btn" data-feed-id="${escapeHtml(row.feed.id)}">トークン再発行</button>
+                <button class="action-chip danger delete-btn" data-id="${escapeHtml(row.monitor.id)}" data-name="${escapeHtml(row.monitor.name)}">削除</button>
               </div>
             </td>
           </tr>`;
