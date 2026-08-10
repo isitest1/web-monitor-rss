@@ -2,15 +2,11 @@ name: Daily monitor
 
 on:
   schedule:
-    # TEMPORARY (testing): hourly instead of the once-daily cadence in
-    # CLAUDE.md §8.1. Revert to '0 18 * * *' (once daily) once testing is
-    # done. Minute is offset from :00 because the top of the hour is the
-    # most congested slot across all of GitHub Actions and sees the
-    # largest scheduling delays. GitHub may still delay the actual start
-    # time; that is expected and not treated as a failure (§8.1/§15.2) —
-    # long-term silent stoppage is caught separately by the Worker cron
-    # watchdog.
-    - cron: '17 * * * *'
+    # Once daily per CLAUDE.md §8.1, at 18:00 UTC (03:00 JST). GitHub may
+    # still delay the actual start time; that is expected and not treated
+    # as a failure (§8.1/§15.2) — long-term silent stoppage is caught
+    # separately by the Worker cron watchdog.
+    - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       monitor_id:
