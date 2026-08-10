@@ -4,9 +4,12 @@ title = "gitleaks config for web-monitor-rss"
 useDefault = true
 
 [allowlist]
-description = "Deliberately embedded Extension API token for single-user convenience (see apps/extension/src/lib/default-config.ts for the rationale); also present in the committed, built extension output that bundles it"
+description = "Deliberately embedded Extension API token for single-user convenience (see apps/extension/src/lib/default-config.ts for the rationale). The committed, built extension output under apps/extension/dist/ bundles it into whichever entry point(s) import it, so the whole build output directory is allowlisted rather than tracking each bundle file individually."
 paths = [
   '''apps/extension/src/lib/default-config\.ts''',
-  '''apps/extension/dist/background\.js''',
-  '''apps/extension/dist/options\.js''',
+  '''apps/extension/dist/.*''',
+  # The manifest "key" field is the extension's RSA *public* key, used only
+  # to pin a deterministic Chrome extension id (§ manifest.json); it is not
+  # sensitive, but its high entropy trips the generic-api-key heuristic.
+  '''apps/extension/manifest\.json''',
 ]
