@@ -19,6 +19,15 @@ import { ITEM_LIMIT } from '../rss/generate.js';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
+// Authenticated HTML must never be cached by the browser (or any proxy in
+// between): a cached /login page served from bfcache/back-forward
+// navigation would keep showing the login form even after a valid session
+// exists, masking the server's own "already logged in" redirect entirely.
+adminRoutes.use('*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store');
+});
+
 adminRoutes.get('/', async (c) => {
   const session = await getAdminSessionRow(c);
   if (!session) return c.redirect('/login');

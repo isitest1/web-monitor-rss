@@ -27,6 +27,11 @@ describe('admin UI pages', () => {
     expect(await res.text()).toContain('ログイン');
   });
 
+  it('never lets the browser cache admin HTML, so a stale /login can never mask a valid session', async () => {
+    const res = await testApp().request('/login', {}, env);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('renders the merged Watchlist with a monitor, its own RSS link, delete/rotate actions, and a stale-heartbeat banner', async () => {
     const admin = await loginAsAdmin(env);
     const monitorRes = await admin.request('/api/monitors', {
