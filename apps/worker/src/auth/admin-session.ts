@@ -51,7 +51,14 @@ export async function createAdminSession<E extends { Bindings: Env }>(
   setCookie(c, SESSION_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: true,
-    sameSite: 'Strict',
+    // Lax, not Strict: the Chrome extension popup (a different origin,
+    // chrome-extension://...) links to /monitors as a normal top-level
+    // GET navigation. Strict withholds the cookie on any cross-site-
+    // initiated top-level navigation, which broke that link (always
+    // landing on /login even with a valid session). Lax still excludes
+    // the cookie from cross-site POST/PUT/DELETE, so CSRF protection is
+    // unchanged for anything state-changing.
+    sameSite: 'Lax',
     path: '/',
     maxAge: ttlSec,
   });

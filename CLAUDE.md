@@ -630,7 +630,7 @@ RSSトークンの再発行を行った場合、新しい平文トークンを�
 個人専用であっても、次の対策を行う。
 
 - 管理画面およびAPIを認証で保護する。
-- 管理画面はHttpOnly、Secure、SameSite=StrictのCookieセッションで保護する。セッションには十分に長いrandom valueを使用し、有効期限を設ける。
+- 管理画面はHttpOnly、Secure、SameSite=LaxのCookieセッションで保護する。セッションには十分に長いrandom valueを使用し、有効期限を設ける。（当初はSameSite=Strictとしていたが、Chrome拡張機能のポップアップからのリンク遷移がcross-site起点のtop-level navigationとして扱われCookieが送られない問題があり、Laxへ変更した。Laxも状態変更を伴うリクエストへは付与されないためCSRF対策としては引き続き有効。）
 - 状態変更を伴う管理画面の要求には、CSRFトークンの検証を行う。
 - 管理者の認証情報（パスワードまたはログイントークン）はハッシュで保持し、平文を保存しない。ログイン試行にはレート制限を設ける。
 - CORSは拡張機能originと設定済み管理画面originへ限定する。

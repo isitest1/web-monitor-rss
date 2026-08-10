@@ -44,7 +44,7 @@ describe('admin auth', () => {
     expect(body.csrfToken).toBeTruthy();
     expect(res.headers.get('set-cookie')).toContain('HttpOnly');
     expect(res.headers.get('set-cookie')).toContain('Secure');
-    expect(res.headers.get('set-cookie')).toContain('SameSite=Strict');
+    expect(res.headers.get('set-cookie')).toContain('SameSite=Lax');
   });
 
   it('reports session state via /api/auth/session and clears it on logout', async () => {

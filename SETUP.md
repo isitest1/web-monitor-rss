@@ -248,7 +248,7 @@ https://YOUR_WORKER_DOMAIN/
 
 - 未ログイン時はログイン画面へ誘導されること。
 - ADMIN_LOGIN_SECRETに対応する認証情報でログインできること。
-- ログイン後にHttpOnly、Secure、SameSite=StrictのセッションCookieが発行されること。
+- ログイン後にHttpOnly、Secure、SameSite=LaxのセッションCookieが発行されること。
 - 状態変更を伴う操作でCSRFトークンが検証されること。
 - ログアウトでセッションが失効すること。
 - 誤った認証情報の連続入力にレート制限がかかること。
