@@ -4373,6 +4373,21 @@
     }
   }
 
+  // src/lib/default-config.ts
+  var DEFAULT_CONFIG = {
+    apiBaseUrl: "https://web-monitor-rss-worker.kouhei1.workers.dev",
+    extensionToken: "001b62fe084115ab799dbe28de83e05629dcb8f2da3279555c7a0d51b6b5b6f5"
+  };
+
+  // src/lib/storage.ts
+  var STORAGE_KEY = "webMonitorConfig";
+  async function getConfig() {
+    const stored = await chrome.storage.local.get(STORAGE_KEY);
+    const value = stored[STORAGE_KEY];
+    if (value?.apiBaseUrl && value.extensionToken) return value;
+    return DEFAULT_CONFIG;
+  }
+
   // src/popup/popup.ts
   async function startSelection() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -4415,8 +4430,15 @@
     }
     renderWatchlist(container, result.data.monitors);
   }
+  async function setupAdminLink() {
+    const link = document.getElementById("open-admin");
+    if (!(link instanceof HTMLAnchorElement)) return;
+    const config = await getConfig();
+    link.href = `${config.apiBaseUrl}/monitors`;
+  }
   document.getElementById("start-selection")?.addEventListener("click", () => {
     void startSelection();
   });
   void loadWatchlist();
+  void setupAdminLink();
 })();

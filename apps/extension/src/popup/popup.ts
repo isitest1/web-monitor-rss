@@ -4,6 +4,7 @@ import {
   type MonitorWithSelections,
 } from '@web-monitor/shared';
 import { sendExtensionMessage } from '../lib/messages.js';
+import { getConfig } from '../lib/storage.js';
 
 type MonitorListItem = MonitorWithSelections & { state: MonitorState | null };
 
@@ -52,8 +53,16 @@ async function loadWatchlist(): Promise<void> {
   renderWatchlist(container, result.data.monitors);
 }
 
+async function setupAdminLink(): Promise<void> {
+  const link = document.getElementById('open-admin');
+  if (!(link instanceof HTMLAnchorElement)) return;
+  const config = await getConfig();
+  link.href = `${config.apiBaseUrl}/monitors`;
+}
+
 document.getElementById('start-selection')?.addEventListener('click', () => {
   void startSelection();
 });
 
 void loadWatchlist();
+void setupAdminLink();
