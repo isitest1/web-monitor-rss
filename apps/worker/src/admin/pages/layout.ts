@@ -123,6 +123,14 @@ export function layout(title: string, bodyHtml: string, options: LayoutOptions =
   .action-chip.danger:hover { background: #fff5f5; }
   .action-chip.disabled { color: var(--muted); cursor: default; background: var(--bg); }
   .action-chip.disabled:hover { background: var(--bg); }
+  /* Sortable Monitor headers/labels: clicking toggles ascending/descending
+     order without adding extra visible controls. */
+  .sort-trigger { cursor: pointer; user-select: none; }
+  th.sort-trigger:hover { color: var(--text); }
+  span.sort-trigger:hover { text-decoration: underline; }
+  .sort-trigger.sort-active { color: var(--accent); font-weight: 600; }
+  .sort-trigger.sort-active::after { content: '\\25B2'; font-size: 0.65em; margin-left: 0.2em; }
+  .sort-trigger.sort-active.sort-desc::after { content: '\\25BC'; }
 </style>
 </head>
 <body>

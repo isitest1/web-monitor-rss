@@ -23,6 +23,15 @@ function statusClass(status: string, enabled: boolean): string {
   return 'status-error';
 }
 
+// Used only for the "状態" sort-trigger, so clicking it surfaces the
+// monitors that most need attention (failing) first.
+function statusSortPriority(cls: string, enabled: boolean): number {
+  if (cls === 'status-error') return 1;
+  if (cls === 'status-ok') return 2;
+  if (enabled) return 3; // UNCHECKED
+  return 4; // disabled
+}
+
 function summarizeValue(state: MonitorState | null): string {
   if (!state?.currentValue || state.currentValue.length === 0) return '(未確認)';
   const parts = state.currentValue.slice(0, 2).map((v) => {
@@ -113,16 +122,18 @@ export function monitorsPage(
 ): string {
   const body = `
 ${healthBanner(systemState)}
-${systemFeedCard(systemFeedUrl)}
 <div class="card">
   <div class="top-bar">
     <h1 style="margin-bottom:0;">Watchlist</h1>
-    <button class="secondary" id="logout-btn">ログアウト</button>
+    <div class="actions-row">
+      <input type="text" id="monitor-search" placeholder="Monitor名・URLで検索" style="width:240px;" />
+      <button class="secondary" id="logout-btn">ログアウト</button>
+    </div>
   </div>
-  <table class="table-align-top">
+  <table class="table-align-top" id="watchlist-table">
     <thead>
       <tr>
-        <th>Monitor</th><th>現在値</th><th>RSS</th><th>確認設定</th><th>履歴</th><th>操作</th>
+        <th class="sort-trigger" data-sort-key="name">Monitor</th><th>現在値</th><th>RSS</th><th>確認設定</th><th>履歴</th><th>操作</th>
       </tr>
     </thead>
     <tbody>
@@ -131,11 +142,25 @@ ${systemFeedCard(systemFeedUrl)}
           const label = monitorStatusLabel(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
           const cls = statusClass(row.state?.status ?? 'UNCHECKED', row.monitor.enabled);
           const failures = row.state?.consecutiveFailures ?? 0;
-          return `<tr>
+          const lastCheckedAt = row.state?.lastCheckedAt ?? '';
+          const lastSuccessAt = row.state?.lastSuccessAt ?? '';
+          const lastChangedAt = row.state?.lastChangedAt ?? '';
+          const searchHaystack = `${row.monitor.name} ${row.monitor.url}`.toLowerCase();
+          return `<tr
+            data-name="${escapeHtml(row.monitor.name)}"
+            data-search="${escapeHtml(searchHaystack)}"
+            data-status-priority="${statusSortPriority(cls, row.monitor.enabled)}"
+            data-execution-mode="${escapeHtml(row.monitor.executionMode)}"
+            data-check-interval="${row.monitor.checkIntervalSec}"
+            data-last-checked="${escapeHtml(lastCheckedAt)}"
+            data-last-success="${escapeHtml(lastSuccessAt)}"
+            data-last-changed="${escapeHtml(lastChangedAt)}"
+            data-failures="${failures}"
+          >
             <td>
               <div class="cell-stack">
                 <strong>${escapeHtml(row.monitor.name)}</strong>
-                <span class="${cls}">${escapeHtml(label)}</span>
+                <span class="${cls} sort-trigger" data-sort-key="statusPriority" title="クリックで状態順に並び替え">${escapeHtml(label)}</span>
               </div>
             </td>
             <td>${escapeHtml(summarizeValue(row.state))}</td>
@@ -146,15 +171,15 @@ ${systemFeedCard(systemFeedUrl)}
               </div>
             </td>
             <td>
-              <div class="field-row"><span class="field-label">方式</span>${executionModeSelect(row.monitor)}</div>
-              <div class="field-row"><span class="field-label">間隔</span>${checkIntervalSelect(row.monitor)}</div>
+              <div class="field-row"><span class="field-label sort-trigger" data-sort-key="executionMode">方式</span>${executionModeSelect(row.monitor)}</div>
+              <div class="field-row"><span class="field-label sort-trigger" data-sort-key="checkInterval">間隔</span>${checkIntervalSelect(row.monitor)}</div>
             </td>
             <td>
               <div class="cell-stack">
-                <div><span class="field-label">確認</span>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</div>
-                <div><span class="field-label">成功</span>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</div>
-                <div><span class="field-label">変更</span>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</div>
-                <div><span class="field-label">失敗</span><span class="${failures > 0 ? 'status-error' : ''}">${failures}</span></div>
+                <div><span class="field-label sort-trigger" data-sort-key="lastChecked">確認</span>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</div>
+                <div><span class="field-label sort-trigger" data-sort-key="lastSuccess">成功</span>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</div>
+                <div><span class="field-label sort-trigger" data-sort-key="lastChanged">変更</span>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</div>
+                <div><span class="field-label sort-trigger" data-sort-key="failures">失敗</span><span class="${failures > 0 ? 'status-error' : ''}">${failures}</span></div>
               </div>
             </td>
             <td>
@@ -163,7 +188,7 @@ ${systemFeedCard(systemFeedUrl)}
                 <a class="action-chip" href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
                 ${
                   row.monitor.executionMode === 'local'
-                    ? '<span class="action-chip disabled" title="ローカルモードのMonitorは拡張機能のポップアップから実行してください">確認は拡張機能で</span>'
+                    ? '<span class="action-chip disabled" title="実行方式が「ローカル」のため、この画面からは確認できません。Chromeに追加したWeb Monitor RSS拡張機能のポップアップを開き、そこにある「今すぐ確認」ボタンを押してください。">拡張機能で確認</span>'
                     : `<button class="action-chip check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>`
                 }
                 <button class="action-chip toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
@@ -179,8 +204,42 @@ ${systemFeedCard(systemFeedUrl)}
   ${rows.length === 0 ? '<p class="muted">監視対象がまだありません。Chrome拡張機能で選択して登録してください。</p>' : ''}
 </div>
 <p class="muted">RSS URLにはアクセス用のトークンが含まれています。他人に共有しないでください。</p>
+${systemFeedCard(systemFeedUrl)}
 <script>
 const csrfToken = '${escapeJs(csrfToken)}';
+document.getElementById('monitor-search')?.addEventListener('input', (e) => {
+  const query = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#watchlist-table tbody tr').forEach((tr) => {
+    const haystack = tr.getAttribute('data-search') || '';
+    tr.style.display = haystack.includes(query) ? '' : 'none';
+  });
+});
+let currentSort = { key: null, dir: 1 };
+function applySort(key) {
+  const tbody = document.querySelector('#watchlist-table tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const dir = currentSort.key === key ? -currentSort.dir : 1;
+  currentSort = { key, dir };
+  rows.sort((a, b) => {
+    const av = a.dataset[key] ?? '';
+    const bv = b.dataset[key] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    const bothNumeric = av !== '' && bv !== '' && !Number.isNaN(an) && !Number.isNaN(bn);
+    const cmp = bothNumeric ? an - bn : av.localeCompare(bv, 'ja');
+    return cmp * dir;
+  });
+  rows.forEach((row) => tbody.appendChild(row));
+  document.querySelectorAll('.sort-trigger').forEach((el) => {
+    const active = el.getAttribute('data-sort-key') === key;
+    el.classList.toggle('sort-active', active);
+    el.classList.toggle('sort-desc', active && dir === -1);
+  });
+}
+document.querySelectorAll('.sort-trigger').forEach((el) => {
+  el.addEventListener('click', () => applySort(el.getAttribute('data-sort-key')));
+});
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST', headers: { 'x-csrf-token': csrfToken } });
   window.location.href = '/login';
