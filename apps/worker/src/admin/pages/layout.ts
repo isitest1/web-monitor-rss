@@ -95,9 +95,9 @@ export function layout(title: string, bodyHtml: string, options: LayoutOptions =
     width: 100%; box-sizing: border-box; font-size: 0.88rem; background: #fff; color: var(--text);
   }
   .rss-url { font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--muted); }
-  .status-ok { color: var(--ok); font-weight: 600; }
-  .status-warn { color: var(--warn); font-weight: 600; }
-  .status-error { color: var(--error); font-weight: 600; }
+  .status-ok { color: var(--ok); font-weight: 700; font-size: 1rem; }
+  .status-warn { color: var(--warn); font-weight: 700; font-size: 1rem; }
+  .status-error { color: var(--error); font-weight: 700; font-size: 1rem; }
   .muted { color: var(--muted); font-size: 0.85rem; }
   .actions-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
   .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
@@ -107,10 +107,13 @@ export function layout(title: string, bodyHtml: string, options: LayoutOptions =
      reads as a compact block rather than a long strip of thin columns. */
   .table-align-top td { vertical-align: top; }
   .cell-stack { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.82rem; }
+  .cell-stack.nowrap > * { white-space: nowrap; }
   .field-row { display: flex; align-items: center; gap: 0.4rem; }
   .field-row + .field-row { margin-top: 0.35rem; }
-  .field-row select { width: auto; min-width: 200px; }
+  .field-row select { width: auto; min-width: 108px; }
   .field-label { flex: 0 0 auto; display: inline-block; min-width: 2.6em; font-size: 0.72rem; color: var(--muted); }
+  #watchlist-table th:nth-child(1), #watchlist-table td:nth-child(1) { max-width: 150px; }
+  #watchlist-table th:nth-child(2), #watchlist-table td:nth-child(2) { max-width: 160px; }
   .actions-grid { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); gap: 0.4rem 0.5rem; }
   .action-chip {
     display: inline-flex; align-items: center; justify-content: center; text-align: center;

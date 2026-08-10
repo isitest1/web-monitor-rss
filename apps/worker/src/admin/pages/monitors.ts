@@ -77,13 +77,13 @@ const CHECK_INTERVAL_PRESETS: Array<{ seconds: number; label: string }> = [
   { seconds: 10800, label: '3時間ごと' },
   { seconds: 21600, label: '6時間ごと' },
   { seconds: 43200, label: '12時間ごと' },
-  { seconds: 86400, label: '24時間ごと（既定）' },
+  { seconds: 86400, label: '24時間ごと' },
 ];
 
 function executionModeSelect(monitor: Monitor): string {
   const options = [
-    { value: 'server', label: 'サーバー（GitHub Actions）' },
-    { value: 'local', label: 'ローカル（拡張機能）' },
+    { value: 'server', label: 'サーバー' },
+    { value: 'local', label: 'ローカル' },
   ]
     .map(
       (opt) =>
@@ -133,7 +133,7 @@ ${healthBanner(systemState)}
   <table class="table-align-top" id="watchlist-table">
     <thead>
       <tr>
-        <th class="sort-trigger" data-sort-key="name">Monitor</th><th>現在値</th><th>RSS</th><th>確認設定</th><th>履歴</th><th>操作</th>
+        <th class="sort-trigger" data-sort-key="name">Monitor</th><th>現在値</th><th>RSS</th><th class="sort-trigger" data-sort-key="executionMode">確認設定</th><th>履歴</th><th>操作</th>
       </tr>
     </thead>
     <tbody>
@@ -171,11 +171,13 @@ ${healthBanner(systemState)}
               </div>
             </td>
             <td>
-              <div class="field-row"><span class="field-label sort-trigger" data-sort-key="executionMode">方式</span>${executionModeSelect(row.monitor)}</div>
-              <div class="field-row"><span class="field-label sort-trigger" data-sort-key="checkInterval">間隔</span>${checkIntervalSelect(row.monitor)}</div>
+              <div class="cell-stack">
+                ${executionModeSelect(row.monitor)}
+                ${checkIntervalSelect(row.monitor)}
+              </div>
             </td>
             <td>
-              <div class="cell-stack">
+              <div class="cell-stack nowrap">
                 <div><span class="field-label sort-trigger" data-sort-key="lastChecked">確認</span>${escapeHtml(formatDate(row.state?.lastCheckedAt ?? null))}</div>
                 <div><span class="field-label sort-trigger" data-sort-key="lastSuccess">成功</span>${escapeHtml(formatDate(row.state?.lastSuccessAt ?? null))}</div>
                 <div><span class="field-label sort-trigger" data-sort-key="lastChanged">変更</span>${escapeHtml(formatDate(row.state?.lastChangedAt ?? null))}</div>
