@@ -15,7 +15,10 @@ migrations_dir = "migrations"
 crons = ["0 * * * *"]
 
 [vars]
-ADMIN_SESSION_TTL_SEC = "604800"
+# 1 year: personal single-user deployment, so favoring "stay logged in" over
+# a short-lived session. Still has a hard expiry (§13 requires one) and can
+# be invalidated any time via /api/auth/logout or a fresh Worker deploy.
+ADMIN_SESSION_TTL_SEC = "31536000"
 DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
 ADMIN_ALLOWED_ORIGIN = "https://web-monitor-rss-worker.kouhei1.workers.dev"
 EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh"
