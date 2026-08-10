@@ -33,9 +33,13 @@ async function runLocalCheckNow(monitorId: string, button: HTMLButtonElement): P
   setTimeout(() => void loadWatchlist(), 1500);
 }
 
-function renderWatchlist(container: HTMLElement, monitors: MonitorListItem[]): void {
+function renderWatchlist(
+  container: HTMLElement,
+  monitors: MonitorListItem[],
+  emptyMessage: string,
+): void {
   if (monitors.length === 0) {
-    container.innerHTML = '<p class="empty">監視対象がまだありません。</p>';
+    container.innerHTML = `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
     return;
   }
   const list = document.createElement('ul');
@@ -58,6 +62,20 @@ function renderWatchlist(container: HTMLElement, monitors: MonitorListItem[]): v
   container.appendChild(list);
 }
 
+let allMonitors: MonitorListItem[] = [];
+
+function applyModeFilter(): void {
+  const container = document.getElementById('watchlist');
+  const filterSelect = document.getElementById('mode-filter');
+  if (!container) return;
+  const mode = filterSelect instanceof HTMLSelectElement ? filterSelect.value : 'all';
+  const filtered =
+    mode === 'all' ? allMonitors : allMonitors.filter((m) => m.executionMode === mode);
+  const emptyMessage =
+    allMonitors.length === 0 ? '監視対象がまだありません。' : '該当するMonitorがありません。';
+  renderWatchlist(container, filtered, emptyMessage);
+}
+
 async function loadWatchlist(): Promise<void> {
   const container = document.getElementById('watchlist');
   if (!container) return;
@@ -68,7 +86,8 @@ async function loadWatchlist(): Promise<void> {
     container.innerHTML = `<p class="empty">${escapeHtml(result.error)}</p>`;
     return;
   }
-  renderWatchlist(container, result.data.monitors);
+  allMonitors = result.data.monitors;
+  applyModeFilter();
 }
 
 async function setupAdminLink(): Promise<void> {
@@ -81,6 +100,7 @@ async function setupAdminLink(): Promise<void> {
 document.getElementById('start-selection')?.addEventListener('click', () => {
   void startSelection();
 });
+document.getElementById('mode-filter')?.addEventListener('change', applyModeFilter);
 
 void loadWatchlist();
 void setupAdminLink();

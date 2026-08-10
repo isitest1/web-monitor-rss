@@ -4421,9 +4421,9 @@
     button.textContent = result.ok ? "\u78BA\u8A8D\u3057\u307E\u3057\u305F" : "\u4ECA\u3059\u3050\u78BA\u8A8D (\u5931\u6557)";
     setTimeout(() => void loadWatchlist(), 1500);
   }
-  function renderWatchlist(container, monitors) {
+  function renderWatchlist(container, monitors, emptyMessage) {
     if (monitors.length === 0) {
-      container.innerHTML = '<p class="empty">\u76E3\u8996\u5BFE\u8C61\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002</p>';
+      container.innerHTML = `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
       return;
     }
     const list = document.createElement("ul");
@@ -4445,6 +4445,16 @@
     container.innerHTML = "";
     container.appendChild(list);
   }
+  var allMonitors = [];
+  function applyModeFilter() {
+    const container = document.getElementById("watchlist");
+    const filterSelect = document.getElementById("mode-filter");
+    if (!container) return;
+    const mode = filterSelect instanceof HTMLSelectElement ? filterSelect.value : "all";
+    const filtered = mode === "all" ? allMonitors : allMonitors.filter((m) => m.executionMode === mode);
+    const emptyMessage = allMonitors.length === 0 ? "\u76E3\u8996\u5BFE\u8C61\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002" : "\u8A72\u5F53\u3059\u308BMonitor\u304C\u3042\u308A\u307E\u305B\u3093\u3002";
+    renderWatchlist(container, filtered, emptyMessage);
+  }
   async function loadWatchlist() {
     const container = document.getElementById("watchlist");
     if (!container) return;
@@ -4455,7 +4465,8 @@
       container.innerHTML = `<p class="empty">${escapeHtml(result.error)}</p>`;
       return;
     }
-    renderWatchlist(container, result.data.monitors);
+    allMonitors = result.data.monitors;
+    applyModeFilter();
   }
   async function setupAdminLink() {
     const link = document.getElementById("open-admin");
@@ -4466,6 +4477,7 @@
   document.getElementById("start-selection")?.addEventListener("click", () => {
     void startSelection();
   });
+  document.getElementById("mode-filter")?.addEventListener("change", applyModeFilter);
   void loadWatchlist();
   void setupAdminLink();
 })();

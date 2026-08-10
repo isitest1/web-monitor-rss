@@ -26,11 +26,23 @@
         font-size: 13px;
         margin-bottom: 10px;
       }
+      .filter-row {
+        margin-bottom: 8px;
+      }
+      .filter-row select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #1a1a1a;
+        background: #fff;
+      }
       ul {
         list-style: none;
         margin: 0;
         padding: 0;
-        max-height: 240px;
+        max-height: 312px;
         overflow-y: auto;
       }
       li {
@@ -68,6 +80,13 @@
   <body>
     <h1>Web Monitor RSS</h1>
     <button id="start-selection">このページで選択を開始</button>
+    <div class="filter-row">
+      <select id="mode-filter">
+        <option value="all">すべて表示</option>
+        <option value="server">サーバーのみ</option>
+        <option value="local">ローカルのみ</option>
+      </select>
+    </div>
     <div id="watchlist">
       <p class="empty">読み込み中...</p>
     </div>
