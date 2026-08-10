@@ -160,3 +160,97 @@ describe('immediate baseline check on Monitor creation', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('POST /api/monitors/:id/check', () => {
+  beforeEach(async () => {
+    await env.DB.exec('DELETE FROM checks');
+    await env.DB.exec('DELETE FROM changes');
+    await env.DB.exec('DELETE FROM monitor_state');
+    await env.DB.exec('DELETE FROM selections');
+    await env.DB.exec('DELETE FROM monitors');
+    await env.DB.exec('DELETE FROM feeds');
+    await env.DB.exec('DELETE FROM admin_sessions');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function createMonitor(requestEnv: typeof env, ctx: ExecutionContext) {
+    const admin = await loginAsAdmin(env);
+    const res = await testApp().request(
+      '/api/monitors',
+      {
+        method: 'POST',
+        headers: {
+          cookie: admin.cookie,
+          'content-type': 'application/json',
+          'x-csrf-token': admin.csrfToken,
+        },
+        body: JSON.stringify({
+          name: 'Check Monitor',
+          url: 'https://example.com/check',
+          selections: [
+            { label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+          ],
+        }),
+      },
+      requestEnv,
+      ctx,
+    );
+    const monitor = await res.json<MonitorWithSelections>();
+    return { admin, monitor };
+  }
+
+  it('returns 503 when GITHUB_DISPATCH_TOKEN is not configured', async () => {
+    const ctx = createExecutionContext();
+    const { admin, monitor } = await createMonitor(env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const res = await admin.request(`/api/monitors/${monitor.id}/check`, { method: 'POST' });
+    expect(res.status).toBe(503);
+    const body = await res.json<{ error: { code: string } }>();
+    expect(body.error.code).toBe('DISPATCH_NOT_CONFIGURED');
+  });
+
+  it('dispatches a scoped workflow run and returns 202 when configured', async () => {
+    const dispatchEnv = {
+      ...env,
+      GITHUB_DISPATCH_TOKEN: 'gh-token',
+      GITHUB_REPO_OWNER: 'acme',
+      GITHUB_REPO_NAME: 'repo',
+    };
+    const createCtx = createExecutionContext();
+    const { admin, monitor } = await createMonitor(dispatchEnv, createCtx);
+    await waitOnExecutionContext(createCtx);
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const checkCtx = createExecutionContext();
+    const res = await testApp().request(
+      `/api/monitors/${monitor.id}/check`,
+      {
+        method: 'POST',
+        headers: { cookie: admin.cookie, 'x-csrf-token': admin.csrfToken },
+      },
+      dispatchEnv,
+      checkCtx,
+    );
+    await waitOnExecutionContext(checkCtx);
+
+    expect(res.status).toBe(202);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      ref: 'main',
+      inputs: { monitor_id: monitor.id },
+    });
+  });
+
+  it('returns 404 for an unknown monitor id', async () => {
+    const admin = await loginAsAdmin(env);
+    const res = await admin.request('/api/monitors/does-not-exist/check', { method: 'POST' });
+    expect(res.status).toBe(404);
+  });
+});

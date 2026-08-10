@@ -1,0 +1,10 @@
+title = "gitleaks config for web-monitor-rss"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deliberately embedded Extension API token for single-user convenience (see apps/extension/src/lib/default-config.ts for the rationale)"
+paths = [
+  '''apps/extension/src/lib/default-config\.ts''',
+]

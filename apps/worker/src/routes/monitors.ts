@@ -189,6 +189,36 @@ monitorRoutes.delete('/:id', requireCsrfForAdmin, async (c) => {
   return c.body(null, 204);
 });
 
+// §12: "手動確認を要求する" — asks GitHub Actions to check this one Monitor
+// right away instead of waiting for the next scheduled/manual run.
+monitorRoutes.post('/:id/check', requireCsrfForAdmin, async (c) => {
+  const monitor = await getMonitorById(c.env.DB, requireParam(c, 'id'));
+  if (!monitor) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');
+
+  const dispatchConfig = getGithubDispatchConfig(c.env);
+  if (!dispatchConfig) {
+    return errorJson(
+      c,
+      503,
+      'DISPATCH_NOT_CONFIGURED',
+      'GITHUB_DISPATCH_TOKEN is not configured on this Worker',
+    );
+  }
+
+  try {
+    await triggerMonitorCheck(dispatchConfig, monitor.id);
+  } catch (error) {
+    return errorJson(
+      c,
+      502,
+      'DISPATCH_FAILED',
+      error instanceof Error ? error.message : 'github dispatch failed',
+    );
+  }
+
+  return c.body(null, 202);
+});
+
 monitorRoutes.post('/:id/enable', requireCsrfForAdmin, async (c) => {
   const updated = await setMonitorEnabled(c.env.DB, requireParam(c, 'id'), true, nowIso());
   if (!updated) return errorJson(c, 404, 'NOT_FOUND', 'monitor not found');

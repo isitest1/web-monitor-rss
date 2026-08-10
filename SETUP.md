@@ -163,7 +163,19 @@ wrangler secret put RUNNER_API_TOKEN --config apps/worker/wrangler.toml
 wrangler secret put SESSION_SIGNING_SECRET --config apps/worker/wrangler.toml
 ```
 
-RSS URLにはこれらの管理用トークンを使用しません。RSSごとに別のランダムなトークンをアプリケーション側で発行します。個人単一利用者向けの運用判断として、D1にはハッシュに加えて平文も保存し、管理画面のFeed管理画面からいつでもRSS URLを確認できるようにしています（管理画面自体がCookieセッションで保護されているため）。RSS配信自体の認証は引き続きハッシュ照合で行います。
+RSS URLにはこれらの管理用トークンを使用しません。RSSごとに別のランダムなトークンをアプリケーション側で発行します。個人単一利用者向けの運用判断として、D1にはハッシュに加えて平文も保存し、管理画面のWatchlist画面からいつでもRSS URLを確認できるようにしています（管理画面自体がCookieセッションで保護されているため）。RSS配信自体の認証は引き続きハッシュ照合で行います。
+
+### 8.1 （任意）Monitor登録直後の即時確認用トークン
+
+Monitorを新規作成した瞬間や、管理画面の「今すぐ確認」ボタンから、次回の定期実行を待たずにGitHub Actionsを起動できるようにする任意機能です。設定しない場合、この機能は自動的に無効になり、次回の定期実行または手動実行まで確認は行われません。
+
+GitHub側でActionsをトリガーできるトークン（`repo`と`workflow`スコープを持つPersonal Access Token、または`gh auth token`で取得できる値）を用意し、Workerへ登録します。
+
+```
+wrangler secret put GITHUB_DISPATCH_TOKEN --config apps/worker/wrangler.toml
+```
+
+さらに`apps/worker/wrangler.toml`の`[vars]`にある`GITHUB_REPO_OWNER`、`GITHUB_REPO_NAME`、`GITHUB_WORKFLOW_FILE`が、実際のリポジトリ名と一致していることを確認してください（この値は秘密情報ではないため、wrangler.tomlにコミットされています）。
 
 ## 9. Worker cron（ハートビート）の設定
 

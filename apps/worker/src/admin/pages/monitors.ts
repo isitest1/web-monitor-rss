@@ -114,6 +114,7 @@ ${systemFeedCard(systemFeedUrl)}
               <div class="actions-row">
                 <a href="${escapeHtml(row.monitor.url)}" target="_blank" rel="noopener">元ページ</a>
                 <a href="/monitors/${escapeHtml(row.monitor.id)}/history">履歴</a>
+                <button class="secondary check-btn" data-id="${escapeHtml(row.monitor.id)}">今すぐ確認</button>
                 <button class="secondary toggle-btn" data-id="${escapeHtml(row.monitor.id)}" data-enabled="${row.monitor.enabled}">${row.monitor.enabled ? '無効化' : '有効化'}</button>
                 <button class="danger-link delete-btn" data-id="${escapeHtml(row.monitor.id)}" data-name="${escapeHtml(row.monitor.name)}">削除</button>
                 <button class="link rotate-btn" data-feed-id="${escapeHtml(row.feed.id)}">トークン再発行</button>
@@ -126,12 +127,28 @@ ${systemFeedCard(systemFeedUrl)}
   </table>
   ${rows.length === 0 ? '<p class="muted">監視対象がまだありません。Chrome拡張機能で選択して登録してください。</p>' : ''}
 </div>
-<p class="muted">GitHub ActionsのworkflowをActions画面からworkflow_dispatchで手動実行すると、即時に確認できます。RSS URLにはアクセス用のトークンが含まれています。他人に共有しないでください。</p>
+<p class="muted">RSS URLにはアクセス用のトークンが含まれています。他人に共有しないでください。</p>
 <script>
 const csrfToken = '${escapeJs(csrfToken)}';
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST', headers: { 'x-csrf-token': csrfToken } });
   window.location.href = '/login';
+});
+document.querySelectorAll('.check-btn').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const id = btn.getAttribute('data-id');
+    const res = await fetch('/api/monitors/' + id + '/check', {
+      method: 'POST',
+      headers: { 'x-csrf-token': csrfToken },
+    });
+    if (res.status === 202) {
+      alert('確認をリクエストしました。数分後にこの画面を更新すると結果が反映されます。');
+    } else if (res.status === 503) {
+      alert('この機能は未設定です（Worker側でGITHUB_DISPATCH_TOKENの設定が必要です）。GitHub ActionsのActions画面から手動実行してください。');
+    } else {
+      alert('確認のリクエストに失敗しました。しばらくしてから再度お試しください。');
+    }
+  });
 });
 document.querySelectorAll('.toggle-btn').forEach((btn) => {
   btn.addEventListener('click', async () => {

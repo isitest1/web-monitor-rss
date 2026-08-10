@@ -56,6 +56,7 @@ describe('admin UI pages', () => {
     expect(html).toContain('RSSを見る');
     expect(html).toContain('delete-btn');
     expect(html).toContain('rotate-btn');
+    expect(html).toContain('check-btn');
     // No more manual Feed picker or separate "create feed" section.
     expect(html).not.toContain('feed-select');
     expect(html).not.toContain('create-feed-form');
