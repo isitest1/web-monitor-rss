@@ -20,6 +20,20 @@ import { startEditMonitor } from './edit-monitor.js';
 const LOCAL_CHECK_ALARM_NAME = 'local-check-tick';
 const LOCAL_CHECK_ALARM_PERIOD_MINUTES = 15;
 
+// chrome.storage.session defaults to TRUSTED_CONTEXTS only (background/
+// extension pages) — a content script reading it (content/index.ts's
+// pending-edit check) throws unless a privileged context opts in here.
+// This setting is not persisted across browser restarts, so it must be
+// re-applied every time this service worker starts, not just once ever.
+chrome.storage.session
+  .setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
+  .catch((error: unknown) => {
+    console.warn(
+      'failed to grant content scripts access to chrome.storage.session:',
+      error instanceof Error ? error.message : String(error),
+    );
+  });
+
 function scheduleLocalCheckAlarm(): void {
   chrome.alarms.create(LOCAL_CHECK_ALARM_NAME, {
     periodInMinutes: LOCAL_CHECK_ALARM_PERIOD_MINUTES,

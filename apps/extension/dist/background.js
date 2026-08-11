@@ -4651,6 +4651,12 @@
   // src/background/service-worker.ts
   var LOCAL_CHECK_ALARM_NAME = "local-check-tick";
   var LOCAL_CHECK_ALARM_PERIOD_MINUTES = 15;
+  chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_AND_UNTRUSTED_CONTEXTS" }).catch((error) => {
+    console.warn(
+      "failed to grant content scripts access to chrome.storage.session:",
+      error instanceof Error ? error.message : String(error)
+    );
+  });
   function scheduleLocalCheckAlarm() {
     chrome.alarms.create(LOCAL_CHECK_ALARM_NAME, {
       periodInMinutes: LOCAL_CHECK_ALARM_PERIOD_MINUTES

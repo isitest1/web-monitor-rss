@@ -5294,11 +5294,19 @@
   // src/content/index.ts
   var PENDING_EDIT_STORAGE_KEY = "editingMonitorId";
   async function consumePendingEditMonitorId() {
-    const stored = await chrome.storage.session.get(PENDING_EDIT_STORAGE_KEY);
-    const monitorId = stored[PENDING_EDIT_STORAGE_KEY];
-    if (typeof monitorId !== "string") return null;
-    await chrome.storage.session.remove(PENDING_EDIT_STORAGE_KEY);
-    return monitorId;
+    try {
+      const stored = await chrome.storage.session.get(PENDING_EDIT_STORAGE_KEY);
+      const monitorId = stored[PENDING_EDIT_STORAGE_KEY];
+      if (typeof monitorId !== "string") return null;
+      await chrome.storage.session.remove(PENDING_EDIT_STORAGE_KEY);
+      return monitorId;
+    } catch (error) {
+      console.warn(
+        "failed to read pending edit state:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return null;
+    }
   }
   async function bootstrap() {
     if (window.__webMonitorSelectionController) return;
@@ -5326,5 +5334,10 @@
       selections: monitor.selections.map((selection) => resolveDraftFromSelection(selection))
     });
   }
-  void bootstrap();
+  bootstrap().catch((error) => {
+    console.error(
+      "Web Monitor RSS: failed to start the Visual Selector:",
+      error instanceof Error ? error.message : String(error)
+    );
+  });
 })();

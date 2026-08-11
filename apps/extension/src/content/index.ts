@@ -16,11 +16,23 @@ declare global {
 const PENDING_EDIT_STORAGE_KEY = 'editingMonitorId';
 
 async function consumePendingEditMonitorId(): Promise<string | null> {
-  const stored = await chrome.storage.session.get(PENDING_EDIT_STORAGE_KEY);
-  const monitorId = stored[PENDING_EDIT_STORAGE_KEY];
-  if (typeof monitorId !== 'string') return null;
-  await chrome.storage.session.remove(PENDING_EDIT_STORAGE_KEY);
-  return monitorId;
+  try {
+    const stored = await chrome.storage.session.get(PENDING_EDIT_STORAGE_KEY);
+    const monitorId = stored[PENDING_EDIT_STORAGE_KEY];
+    if (typeof monitorId !== 'string') return null;
+    await chrome.storage.session.remove(PENDING_EDIT_STORAGE_KEY);
+    return monitorId;
+  } catch (error) {
+    // Falls back to create-mode rather than leaving bootstrap() unhandled
+    // and the overlay never appearing at all (e.g. if the background
+    // hasn't granted this content script access to chrome.storage.session
+    // yet — see service-worker.ts's setAccessLevel call).
+    console.warn(
+      'failed to read pending edit state:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
 }
 
 async function bootstrap(): Promise<void> {
@@ -58,4 +70,9 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-void bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error(
+    'Web Monitor RSS: failed to start the Visual Selector:',
+    error instanceof Error ? error.message : String(error),
+  );
+});
