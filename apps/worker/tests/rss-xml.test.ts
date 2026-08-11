@@ -129,7 +129,9 @@ describe('RSS XML escaping and validity', () => {
     });
 
     const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    expect(xml).toContain('100円 → 200円');
+    // "100円"→"200円" share the "00円" suffix, so the scalar diff isolates
+    // just the changed digit rather than repeating the whole value.
+    expect(xml).toContain('【1 → 2】00円');
     expect(xml).not.toContain('選択1:');
   });
 
@@ -188,8 +190,8 @@ describe('RSS XML escaping and validity', () => {
     });
 
     const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    expect(xml).toContain('価格: 100円 → 200円');
-    expect(xml).toContain('在庫: あり → なし');
+    expect(xml).toContain('価格: 【1 → 2】00円');
+    expect(xml).toContain('在庫: 【あり → なし】');
   });
 
   it('returns an empty but valid channel when a feed has no changes yet', async () => {

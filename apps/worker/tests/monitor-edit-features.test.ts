@@ -342,3 +342,100 @@ describe('list-mode change description shows added/removed instead of full lists
     expect(historyHtml).toContain('削除: A');
   });
 });
+
+describe('scalar (text-mode) change description shows only the changed portion in context', () => {
+  let feed: FeedWithPlaintextToken;
+  let monitor: MonitorWithSelections;
+  let selectionId: string;
+
+  const longTail =
+    '。この商品は大変人気があり、在庫がなくなり次第終了となりますのでお早めにご検討ください。';
+
+  beforeEach(async () => {
+    await env.DB.exec('DELETE FROM checks');
+    await env.DB.exec('DELETE FROM changes');
+    await env.DB.exec('DELETE FROM monitor_state');
+    await env.DB.exec('DELETE FROM selections');
+    await env.DB.exec('DELETE FROM monitors');
+    await env.DB.exec('DELETE FROM feeds');
+    await env.DB.exec('DELETE FROM admin_sessions');
+
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Scalar Diff Feed', slug: 'scalar-diff-feed', kind: 'content' }),
+    });
+    feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: '長文監視',
+        url: 'https://example.com/long-text-target',
+        selections: [
+          { label: '本文', selectorType: 'css', selector: '#body', extractionMode: 'text' },
+        ],
+      }),
+    });
+    monitor = await monitorRes.json<MonitorWithSelections>();
+    selectionId = monitor.selections[0]!.id;
+  });
+
+  it('isolates a one-digit price change in a long paragraph instead of repeating it whole', async () => {
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        monitorId: monitor.id,
+        runId: 'scalar-run-1',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: 'SUCCESS',
+        durationMs: 500,
+        httpStatus: 200,
+        values: [
+          {
+            selectionId,
+            label: '本文',
+            displayValue: `価格は1000円です${longTail}`,
+            comparisonValue: `価格は1000円です${longTail}`,
+          },
+        ],
+      }),
+    });
+
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        monitorId: monitor.id,
+        runId: 'scalar-run-2',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: 'SUCCESS',
+        durationMs: 500,
+        httpStatus: 200,
+        values: [
+          {
+            selectionId,
+            label: '本文',
+            displayValue: `価格は2000円です${longTail}`,
+            comparisonValue: `価格は2000円です${longTail}`,
+          },
+        ],
+      }),
+    });
+
+    const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
+    const xml = await rssRes.text();
+    expect(xml).toContain('【1 → 2】');
+    // The unchanged tail is long enough to be truncated with an ellipsis
+    // rather than repeated in full.
+    expect(xml).not.toContain('お早めにご検討ください');
+
+    const admin = await loginAsAdmin(env);
+    const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
+    const historyHtml = await historyRes.text();
+    expect(historyHtml).toContain('【1 → 2】');
+    expect(historyHtml).not.toContain('お早めにご検討ください');
+  });
+});

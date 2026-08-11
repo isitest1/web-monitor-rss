@@ -1,4 +1,10 @@
-import { diffArrayValues, type Change, type ChangeType, type Feed } from '@web-monitor/shared';
+import {
+  diffArrayValues,
+  diffScalarText,
+  type Change,
+  type ChangeType,
+  type Feed,
+} from '@web-monitor/shared';
 import { listChangesByFeed } from '../db/repositories/changes.js';
 import { getMonitorNamesByIds } from '../db/repositories/monitors.js';
 import { escapeXml, toRfc822 } from './xml.js';
@@ -49,10 +55,29 @@ function formatDisplay(value: string | string[] | undefined): string {
 }
 
 /**
+ * Renders a scalar (single-value) Selection's change as the edited portion
+ * in context, instead of the whole before/after text — trims the shared
+ * prefix/suffix via diffScalarText so a one-sentence edit in a long
+ * paragraph doesn't force the reader to spot the difference themselves.
+ */
+function formatScalarDiff(oldValue: string, newValue: string): string {
+  const diff = diffScalarText(oldValue, newValue);
+  if (!diff.changed) return newValue;
+  const core =
+    diff.removed && diff.added
+      ? `${diff.removed} → ${diff.added}`
+      : diff.added
+        ? `追加: ${diff.added}`
+        : `削除: ${diff.removed}`;
+  return `${diff.contextBefore}【${core}】${diff.contextAfter}`;
+}
+
+/**
  * For a list-mode (array-valued) Selection, shows which entries were added/
- * removed instead of the whole before/after list (§ Feature: 一覧差分表示)
- * — much more scannable for a repeating structure with many unchanged
- * items. Scalar Selections keep the plain "旧 → 新" format.
+ * removed instead of the whole before/after list; for a scalar Selection,
+ * shows just the edited portion in context (§ Feature: 差分表示改善) —
+ * both avoid dumping the whole before/after value for a change that only
+ * touched a small part of it.
  */
 function formatChangeLine(
   label: string,
@@ -71,9 +96,11 @@ function formatChangeLine(
     const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
     return showLabel ? `${label}: ${diffText}` : diffText;
   }
-  const oldDisplay = formatDisplay(oldValue);
-  const newDisplay = formatDisplay(newValue);
-  return showLabel ? `${label}: ${oldDisplay} → ${newDisplay}` : `${oldDisplay} → ${newDisplay}`;
+  const diffText =
+    typeof oldValue === 'string' && typeof newValue === 'string'
+      ? formatScalarDiff(oldValue, newValue)
+      : `${formatDisplay(oldValue)} → ${formatDisplay(newValue)}`;
+  return showLabel ? `${label}: ${diffText}` : diffText;
 }
 
 export interface RssGenerationResult {

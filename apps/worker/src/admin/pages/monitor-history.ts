@@ -1,4 +1,10 @@
-import { diffArrayValues, type Change, type Check, type Monitor } from '@web-monitor/shared';
+import {
+  diffArrayValues,
+  diffScalarText,
+  type Change,
+  type Check,
+  type Monitor,
+} from '@web-monitor/shared';
 import { layout } from './layout.js';
 import { escapeHtml } from './escape.js';
 
@@ -12,7 +18,20 @@ function formatValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
-/** Mirrors apps/worker/src/rss/generate.ts's formatChangeLine so the admin history and RSS descriptions agree on how a list-mode change reads. */
+/** Mirrors apps/worker/src/rss/generate.ts's formatScalarDiff so a single-value edit shows just the changed portion in context, not the whole before/after text. */
+function formatScalarDiff(oldValue: string, newValue: string): string {
+  const diff = diffScalarText(oldValue, newValue);
+  if (!diff.changed) return newValue;
+  const core =
+    diff.removed && diff.added
+      ? `${diff.removed} → ${diff.added}`
+      : diff.added
+        ? `追加: ${diff.added}`
+        : `削除: ${diff.removed}`;
+  return `${diff.contextBefore}【${core}】${diff.contextAfter}`;
+}
+
+/** Mirrors apps/worker/src/rss/generate.ts's formatChangeLine so the admin history and RSS descriptions agree on how a change reads. */
 function formatChangeLine(
   label: string,
   oldValue: string | string[] | undefined,
@@ -29,7 +48,11 @@ function formatChangeLine(
     const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
     return `${label}: ${diffText}`;
   }
-  return `${label}: ${formatValue(oldValue)} → ${formatValue(newValue)}`;
+  const diffText =
+    typeof oldValue === 'string' && typeof newValue === 'string'
+      ? formatScalarDiff(oldValue, newValue)
+      : `${formatValue(oldValue)} → ${formatValue(newValue)}`;
+  return `${label}: ${diffText}`;
 }
 
 export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: Change[]): string {
