@@ -29,7 +29,7 @@ export async function evaluateHeartbeat(
       key: 'heartbeat',
       now,
       origin,
-      description: `Runnerの最終正常実行から${state.heartbeatThresholdSec}秒を超えて更新がありません。GitHub Actionsのscheduleが停止していないか確認してください。`,
+      description: `No successful Runner run in over ${state.heartbeatThresholdSec} seconds. Check whether the GitHub Actions schedule has stopped.`,
     });
     await setAlertStatus(db, 'stale', changeId, now);
   } else if (!isStale && state.alertStatus === 'stale') {
@@ -40,7 +40,7 @@ export async function evaluateHeartbeat(
       key: 'heartbeat',
       now,
       origin,
-      description: 'Runnerの実行が復旧し、正常なハートビートを受信しました。',
+      description: 'Runner has recovered and a heartbeat was received successfully.',
     });
     // No alert is active once healthy, so this must be cleared rather than
     // pointed at the recovery event's own id.

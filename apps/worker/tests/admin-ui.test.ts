@@ -24,7 +24,7 @@ describe('admin UI pages', () => {
   it('serves the login page at /login', async () => {
     const res = await testApp().request('/login', {}, env);
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('ログイン');
+    expect(await res.text()).toContain('Log In');
   });
 
   it('never lets the browser cache admin HTML, so a stale /login can never mask a valid session', async () => {
@@ -56,9 +56,9 @@ describe('admin UI pages', () => {
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain('UI Monitor');
-    expect(html).toContain('稼働停止の疑い');
+    expect(html).toContain('Possible outage');
     expect(html).toContain(`/monitors/${monitor.id}/history`);
-    expect(html).toContain('RSSを見る');
+    expect(html).toContain('View RSS');
     expect(html).toContain('delete-btn');
     expect(html).toContain('rotate-btn');
     expect(html).toContain('check-btn');
@@ -68,7 +68,7 @@ describe('admin UI pages', () => {
     // §: favicon/logo and full-width Watchlist layout.
     expect(html).toContain('rel="icon"');
     expect(html).toContain('max-width: none');
-    expect(html).toContain('0件');
+    expect(html).toContain('0 items');
   });
 
   it('shows the number of published RSS items for a Monitor that has changed', async () => {
@@ -122,7 +122,7 @@ describe('admin UI pages', () => {
 
     const page = await admin.request('/monitors');
     const html = await page.text();
-    expect(html).toContain('1件');
+    expect(html).toContain('1 item');
   });
 
   it('shows the auto-bootstrapped system feed URL once a stale alert exists', async () => {
@@ -134,12 +134,16 @@ describe('admin UI pages', () => {
       .run();
     await admin.request('/api/feeds', {
       method: 'POST',
-      body: JSON.stringify({ name: 'システム稼働通知', slug: 'system-auto', kind: 'system' }),
+      body: JSON.stringify({
+        name: 'System Status Notifications',
+        slug: 'system-auto',
+        kind: 'system',
+      }),
     });
 
     const page = await admin.request('/monitors');
     const html = await page.text();
-    expect(html).toContain('システム稼働通知RSS');
+    expect(html).toContain('System Status RSS');
   });
 
   it('renders the monitor history page with change and check rows', async () => {
@@ -164,8 +168,8 @@ describe('admin UI pages', () => {
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain('History Monitor');
-    expect(html).toContain('変更履歴');
-    expect(html).toContain('確認履歴');
+    expect(html).toContain('Change History');
+    expect(html).toContain('Check History');
   });
 
   it('returns 404 for a history page of an unknown monitor', async () => {

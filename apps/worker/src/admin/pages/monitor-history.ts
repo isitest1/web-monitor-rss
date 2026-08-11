@@ -10,11 +10,11 @@ import { escapeHtml } from './escape.js';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  return new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Tokyo' });
 }
 
 function formatValue(value: string | string[] | undefined): string {
-  if (value === undefined) return '(なし)';
+  if (value === undefined) return '(none)';
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
@@ -26,9 +26,9 @@ function formatScalarDiff(oldValue: string, newValue: string): string {
     diff.removed && diff.added
       ? `${diff.removed} → ${diff.added}`
       : diff.added
-        ? `追加: ${diff.added}`
-        : `削除: ${diff.removed}`;
-  return `${diff.contextBefore}【${core}】${diff.contextAfter}`;
+        ? `Added: ${diff.added}`
+        : `Removed: ${diff.removed}`;
+  return `${diff.contextBefore}[${core}]${diff.contextAfter}`;
 }
 
 /** Mirrors apps/worker/src/rss/generate.ts's formatChangeLine so the admin history and RSS descriptions agree on how a change reads. */
@@ -43,9 +43,9 @@ function formatChangeLine(
       newValue,
     );
     const parts: string[] = [];
-    if (added.length > 0) parts.push(`追加: ${added.join(', ')}`);
-    if (removed.length > 0) parts.push(`削除: ${removed.join(', ')}`);
-    const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
+    if (added.length > 0) parts.push(`Added: ${added.join(', ')}`);
+    if (removed.length > 0) parts.push(`Removed: ${removed.join(', ')}`);
+    const diffText = parts.length > 0 ? parts.join(' / ') : '(order changed)';
     return `${label}: ${diffText}`;
   }
   const diffText =
@@ -57,14 +57,14 @@ function formatChangeLine(
 
 export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: Change[]): string {
   const body = `
-<p><a href="/monitors">&larr; Watchlistへ戻る</a></p>
+<p><a href="/monitors">&larr; Back to Watchlist</a></p>
 <div class="card">
-  <h1>${escapeHtml(monitor.name)} の履歴</h1>
+  <h1>${escapeHtml(monitor.name)} History</h1>
   <p class="muted"><a href="${escapeHtml(monitor.url)}" target="_blank" rel="noopener">${escapeHtml(monitor.url)}</a></p>
 
-  <h2>変更履歴</h2>
+  <h2>Change History</h2>
   <table>
-    <thead><tr><th>検出日時</th><th>種別</th><th>詳細</th></tr></thead>
+    <thead><tr><th>Detected At</th><th>Type</th><th>Details</th></tr></thead>
     <tbody>
       ${changes
         .map(
@@ -86,11 +86,11 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
         .join('')}
     </tbody>
   </table>
-  ${changes.length === 0 ? '<p class="muted">変更履歴はまだありません。</p>' : ''}
+  ${changes.length === 0 ? '<p class="muted">No change history yet.</p>' : ''}
 
-  <h2>確認履歴（直近100件）</h2>
+  <h2>Check History (last 100)</h2>
   <table>
-    <thead><tr><th>開始</th><th>状態</th><th>所要時間</th><th>HTTP</th><th>エラー</th></tr></thead>
+    <thead><tr><th>Started</th><th>Status</th><th>Duration</th><th>HTTP</th><th>Error</th></tr></thead>
     <tbody>
       ${checks
         .map(
@@ -105,8 +105,8 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
         .join('')}
     </tbody>
   </table>
-  ${checks.length === 0 ? '<p class="muted">確認履歴はまだありません。</p>' : ''}
+  ${checks.length === 0 ? '<p class="muted">No check history yet.</p>' : ''}
 </div>
 `;
-  return layout(`${monitor.name} - 履歴`, body);
+  return layout(`${monitor.name} - History`, body);
 }

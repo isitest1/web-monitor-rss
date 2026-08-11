@@ -4741,7 +4741,7 @@
     }
   }
   function computePreview(draft) {
-    if (!draft.element) return "(\u8981\u7D20\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u9078\u3073\u76F4\u3057\u3066\u304F\u3060\u3055\u3044)";
+    if (!draft.element) return "(Element not found. Click to re-select.)";
     if (draft.extractionMode === "list" && draft.selectorType === "css" && draft.selector) {
       const items = Array.from(document.querySelectorAll(draft.selector)).slice(
         0,
@@ -4796,20 +4796,20 @@
   // src/content/panel.ts
   var EXTRACTION_MODES = ["text", "html", "attribute", "link", "image", "list"];
   var EXTRACTION_MODE_LABELS = {
-    text: "\u30C6\u30AD\u30B9\u30C8",
+    text: "Text",
     html: "HTML",
-    attribute: "\u5C5E\u6027\u5024",
-    link: "\u30EA\u30F3\u30AFURL",
-    image: "\u753B\u50CFURL",
-    list: "\u4E00\u89A7"
+    attribute: "Attribute",
+    link: "Link URL",
+    image: "Image URL",
+    list: "List"
   };
   function renderPanel(panel, state, callbacks) {
     panel.innerHTML = "";
     const heading = document.createElement("h2");
-    heading.textContent = state.editingMonitorId ? "Web Monitor RSS - Monitor\u3092\u7DE8\u96C6\u4E2D" : "Web Monitor RSS - \u9078\u629E";
+    heading.textContent = state.editingMonitorId ? "Web Monitor RSS - Editing Monitor" : "Web Monitor RSS - Selection";
     panel.appendChild(heading);
     const nameLabel = document.createElement("label");
-    nameLabel.textContent = "Monitor\u540D";
+    nameLabel.textContent = "Monitor name";
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.value = state.monitorName;
@@ -4817,20 +4817,20 @@
     nameLabel.appendChild(nameInput);
     panel.appendChild(nameLabel);
     const groupLabel = document.createElement("label");
-    groupLabel.textContent = "\u30B0\u30EB\u30FC\u30D7\uFF08\u4EFB\u610F\uFF09";
+    groupLabel.textContent = "Group (optional)";
     const groupInput = document.createElement("input");
     groupInput.type = "text";
-    groupInput.placeholder = "\u4F8B\uFF1A\u533B\u85AC\u54C1\u7CFB\u3001\u91E3\u679C\u60C5\u5831";
+    groupInput.placeholder = "e.g. Pharma, Fishing reports";
     groupInput.value = state.groupName ?? "";
     groupInput.addEventListener("input", () => callbacks.onGroupNameChange(groupInput.value));
     groupLabel.appendChild(groupInput);
     panel.appendChild(groupLabel);
     const modeLabel = document.createElement("label");
-    modeLabel.textContent = "Monitor\u306E\u7A2E\u985E";
+    modeLabel.textContent = "Monitor type";
     const modeSelect = document.createElement("select");
     for (const [value, text] of [
-      ["single", "\u5358\u4E00\u8981\u7D20"],
-      ["list", "\u4E00\u89A7\uFF08\u7E70\u308A\u8FD4\u3057\uFF09"]
+      ["single", "Single element"],
+      ["list", "List (repeating)"]
     ]) {
       const option = document.createElement("option");
       option.value = value;
@@ -4846,12 +4846,12 @@
     panel.appendChild(modeLabel);
     const hint = document.createElement("p");
     hint.className = "hint";
-    hint.textContent = state.reselectTargetId ? "\u30DA\u30FC\u30B8\u4E0A\u3067\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002" : "\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u307E\u305F\u306FEnter\u3067\u9078\u629E\u306B\u8FFD\u52A0\u3057\u307E\u3059\u3002\u77E2\u5370\u30AD\u30FC\u3067\u89AA\u30FB\u5B50\u30FB\u5144\u5F1F\u8981\u7D20\u3078\u79FB\u52D5\u3001Delete\u3067\u9078\u629E\u3092\u524A\u9664\u3001Escape\u3067\u7D42\u4E86\u3057\u307E\u3059\u3002\u4FDD\u5B58\u3059\u308B\u3068\u5C02\u7528\u306ERSS Feed\u304C\u81EA\u52D5\u7684\u306B\u4F5C\u3089\u308C\u307E\u3059\u3002";
+    hint.textContent = state.reselectTargetId ? "Click the element on the page to use as a replacement." : "Click an element or press Enter to add it to the selection. Use the arrow keys to move to a parent/child/sibling element, Delete to remove a selection, Escape to finish. A dedicated RSS Feed is created automatically when you save.";
     panel.appendChild(hint);
     const fullPageButton = document.createElement("button");
     fullPageButton.type = "button";
     fullPageButton.className = "fullpage-btn";
-    fullPageButton.textContent = "\u30DA\u30FC\u30B8\u5168\u4F53\u3092\u9078\u629E\u306B\u8FFD\u52A0";
+    fullPageButton.textContent = "Add whole page to selection";
     fullPageButton.addEventListener("click", () => callbacks.onAddFullPage());
     panel.appendChild(fullPageButton);
     const list = document.createElement("ul");
@@ -4864,13 +4864,13 @@
     const cancelButton = document.createElement("button");
     cancelButton.type = "button";
     cancelButton.className = "cancel-btn";
-    cancelButton.textContent = "\u30AD\u30E3\u30F3\u30BB\u30EB";
+    cancelButton.textContent = "Cancel";
     cancelButton.addEventListener("click", () => callbacks.onCancel());
     actions.appendChild(cancelButton);
     const saveButton = document.createElement("button");
     saveButton.type = "button";
     saveButton.className = "save-btn";
-    saveButton.textContent = state.saving ? "\u4FDD\u5B58\u4E2D..." : "\u4FDD\u5B58";
+    saveButton.textContent = state.saving ? "Saving..." : "Save";
     saveButton.disabled = state.saving || state.selections.length === 0;
     saveButton.addEventListener("click", () => callbacks.onSave());
     actions.appendChild(saveButton);
@@ -4898,7 +4898,7 @@
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "delete-btn";
-    deleteButton.textContent = "\u524A\u9664";
+    deleteButton.textContent = "Delete";
     deleteButton.addEventListener("click", () => callbacks.onRemove(selection.id));
     row.appendChild(deleteButton);
     item.appendChild(row);
@@ -4907,13 +4907,13 @@
       warning.className = "unresolved-warning";
       const isTargeted = state.reselectTargetId === selection.id;
       const warningText = document.createElement("span");
-      warningText.textContent = isTargeted ? "\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30DA\u30FC\u30B8\u4E0A\u3067\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002" : "\u8981\u7D20\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF08\u30B5\u30A4\u30C8\u304C\u5909\u308F\u3063\u305F\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\uFF09\u3002";
+      warningText.textContent = isTargeted ? "Click the element on the page to use as a replacement." : "Element not found (the site may have changed).";
       warning.appendChild(warningText);
       if (!isTargeted) {
         const reselectButton = document.createElement("button");
         reselectButton.type = "button";
         reselectButton.className = "reselect-btn";
-        reselectButton.textContent = "\u518D\u9078\u629E";
+        reselectButton.textContent = "Re-select";
         reselectButton.addEventListener("click", () => callbacks.onReselect(selection.id));
         warning.appendChild(reselectButton);
       }
@@ -4922,7 +4922,7 @@
       const reselectButton = document.createElement("button");
       reselectButton.type = "button";
       reselectButton.className = "reselect-btn";
-      reselectButton.textContent = "\u5225\u306E\u8981\u7D20\u306B\u9078\u3073\u76F4\u3059";
+      reselectButton.textContent = "Pick a different element";
       reselectButton.addEventListener("click", () => callbacks.onReselect(selection.id));
       item.appendChild(reselectButton);
     }
@@ -4941,7 +4941,7 @@
     item.appendChild(modeSelect);
     const preview = document.createElement("div");
     preview.className = "preview";
-    const matchNote = selection.matchCount > 1 ? `\uFF08${selection.matchCount}\u4EF6\u306B\u4E00\u81F4\uFF09 ` : "";
+    const matchNote = selection.matchCount > 1 ? `(matches ${selection.matchCount} elements) ` : "";
     preview.textContent = `${matchNote}${computePreview(selection)}`;
     item.appendChild(preview);
     return item;
@@ -5110,7 +5110,7 @@
         element,
         candidates,
         best,
-        `\u9078\u629E${this.selections.length + 1}`,
+        `Selection ${this.selections.length + 1}`,
         this.monitorMode
       );
       this.selections.push(draft);
@@ -5119,7 +5119,7 @@
     }
     startReselect(id) {
       this.reselectTargetId = id;
-      this.statusMessage = "\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+      this.statusMessage = "Click the element to use as a replacement.";
       this.renderPanel();
     }
     deleteCurrentIfSelected() {
@@ -5189,7 +5189,7 @@
         onRemove: (id) => this.removeSelection(id),
         onReselect: (id) => this.startReselect(id),
         onAddFullPage: () => {
-          this.selections.push(createFullPageDraft(`\u30DA\u30FC\u30B8\u5168\u4F53${this.selections.length + 1}`));
+          this.selections.push(createFullPageDraft(`Full page ${this.selections.length + 1}`));
           this.renderPanel();
         },
         onSave: () => void this.save(),
@@ -5199,7 +5199,7 @@
     async save() {
       if (this.selections.length === 0) return;
       if (this.selections.some((s) => !s.resolved)) {
-        this.statusMessage = "\u898B\u3064\u304B\u3089\u306A\u3044\u9078\u629E\u304C\u3042\u308A\u307E\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u9078\u3073\u76F4\u3059\u304B\u3001\u524A\u9664\u3057\u3066\u304B\u3089\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+        this.statusMessage = "Some selections could not be found. Click to re-select them, or delete them before saving.";
         this.renderPanel();
         return;
       }
@@ -5245,11 +5245,11 @@
       });
       this.saving = false;
       if (result.ok) {
-        this.statusMessage = "\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002";
+        this.statusMessage = "Saved.";
         this.renderPanel();
         window.setTimeout(() => this.stop(), 800);
       } else {
-        this.statusMessage = `\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${result.error}`;
+        this.statusMessage = `Save failed: ${result.error}`;
         this.renderPanel();
       }
     }

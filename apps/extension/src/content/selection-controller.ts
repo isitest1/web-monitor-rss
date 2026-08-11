@@ -196,7 +196,7 @@ export class SelectionController {
       element,
       candidates,
       best,
-      `選択${this.selections.length + 1}`,
+      `Selection ${this.selections.length + 1}`,
       this.monitorMode,
     );
     this.selections.push(draft);
@@ -206,7 +206,7 @@ export class SelectionController {
 
   private startReselect(id: string): void {
     this.reselectTargetId = id;
-    this.statusMessage = '置き換える要素をクリックしてください。';
+    this.statusMessage = 'Click the element to use as a replacement.';
     this.renderPanel();
   }
 
@@ -281,7 +281,7 @@ export class SelectionController {
       onRemove: (id) => this.removeSelection(id),
       onReselect: (id) => this.startReselect(id),
       onAddFullPage: () => {
-        this.selections.push(createFullPageDraft(`ページ全体${this.selections.length + 1}`));
+        this.selections.push(createFullPageDraft(`Full page ${this.selections.length + 1}`));
         this.renderPanel();
       },
       onSave: () => void this.save(),
@@ -293,7 +293,7 @@ export class SelectionController {
     if (this.selections.length === 0) return;
     if (this.selections.some((s) => !s.resolved)) {
       this.statusMessage =
-        '見つからない選択があります。クリックして選び直すか、削除してから保存してください。';
+        'Some selections could not be found. Click to re-select them, or delete them before saving.';
       this.renderPanel();
       return;
     }
@@ -343,11 +343,11 @@ export class SelectionController {
         });
     this.saving = false;
     if (result.ok) {
-      this.statusMessage = '保存しました。';
+      this.statusMessage = 'Saved.';
       this.renderPanel();
       window.setTimeout(() => this.stop(), 800);
     } else {
-      this.statusMessage = `保存に失敗しました: ${result.error}`;
+      this.statusMessage = `Save failed: ${result.error}`;
       this.renderPanel();
     }
   }

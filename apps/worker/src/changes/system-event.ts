@@ -37,7 +37,7 @@ export async function createSystemEvent(db: D1Database, input: SystemEventInput)
     newValue: [
       {
         selectionId: 'system',
-        label: '詳細',
+        label: 'Details',
         displayValue: input.description,
         comparisonValue: input.description,
       },

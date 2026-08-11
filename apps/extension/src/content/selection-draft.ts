@@ -70,7 +70,7 @@ export function computePreview(
     'selector' | 'selectorType' | 'extractionMode' | 'attributeName' | 'element'
   >,
 ): string {
-  if (!draft.element) return '(要素が見つかりません。クリックして選び直してください)';
+  if (!draft.element) return '(Element not found. Click to re-select.)';
   if (draft.extractionMode === 'list' && draft.selectorType === 'css' && draft.selector) {
     const items = Array.from(document.querySelectorAll(draft.selector)).slice(
       0,

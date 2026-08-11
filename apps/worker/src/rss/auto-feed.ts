@@ -52,7 +52,7 @@ export async function getOrCreateSystemFeed(
   if (existing) return existing;
   const feed = await insertFeed(db, {
     id: generateId(),
-    name: 'システム稼働通知',
+    name: 'System Status Notifications',
     slug: slugify('system'),
     kind: 'system',
     enabled: true,

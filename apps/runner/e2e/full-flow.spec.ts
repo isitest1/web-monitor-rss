@@ -166,7 +166,7 @@ test.describe('end-to-end: Selection definition to RSS item', () => {
       // "初期の見出しです"→"更新された見出しです" share the "見出しです" suffix,
       // so the scalar diff isolates just the changed portion instead of
       // repeating both full values.
-      expect(changedXml).toContain('【初期の → 更新された】見出しです');
+      expect(changedXml).toContain('[初期の → 更新された]見出しです');
       expect(changedXml).toContain(`urn:web-monitor:change:${changedResult.changeId}`);
 
       // Resubmitting the same transition must not publish a duplicate item.

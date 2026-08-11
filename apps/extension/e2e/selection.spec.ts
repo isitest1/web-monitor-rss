@@ -7,7 +7,7 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
   });
 
   test('renders the panel', async ({ page }) => {
-    await expect(page.locator('.panel h2')).toHaveText('Web Monitor RSS - 選択');
+    await expect(page.locator('.panel h2')).toHaveText('Web Monitor RSS - Selection');
   });
 
   test('shows a hover box over the element under the cursor', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
     await page.locator('#item-list .item').first().click();
 
     await expect(page.locator('.panel li select')).toHaveValue('list');
-    await expect(page.locator('.panel li .preview')).toContainText('3件に一致');
+    await expect(page.locator('.panel li .preview')).toContainText('matches 3 elements');
     await expect(page.locator('.panel li .preview')).toContainText('項目A');
     await expect(page.locator('.panel li .preview')).toContainText('項目C');
   });
@@ -111,7 +111,7 @@ test.describe('Visual Selector overlay on the static fixture page', () => {
     await page.locator('.panel input[type="text"]').first().fill('見出し監視');
     await page.locator('.panel .save-btn').click();
 
-    await expect(page.locator('.panel .status')).toHaveText('保存しました。');
+    await expect(page.locator('.panel .status')).toHaveText('Saved.');
 
     const payload = await page.evaluate(
       () =>

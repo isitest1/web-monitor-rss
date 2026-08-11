@@ -43,16 +43,16 @@
       apiBaseUrl: apiBaseUrlInput.value.trim(),
       extensionToken: extensionTokenInput.value.trim()
     });
-    statusEl.textContent = "\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002";
+    statusEl.textContent = "Saved.";
   });
   document.getElementById("test-connection")?.addEventListener("click", async () => {
     await setConfig({
       apiBaseUrl: apiBaseUrlInput.value.trim(),
       extensionToken: extensionTokenInput.value.trim()
     });
-    statusEl.textContent = "\u78BA\u8A8D\u4E2D...";
+    statusEl.textContent = "Checking...";
     const result = await sendExtensionMessage({ type: "PING_API" });
-    statusEl.textContent = result.ok ? "\u63A5\u7D9A\u306B\u6210\u529F\u3057\u307E\u3057\u305F\u3002" : `\u63A5\u7D9A\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${result.error}`;
+    statusEl.textContent = result.ok ? "Connected successfully." : `Connection failed: ${result.error}`;
   });
   void loadExisting();
 })();

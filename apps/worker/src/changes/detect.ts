@@ -88,7 +88,7 @@ async function handleFailure(
         key: `monitor-fetch-failure:${monitor.id}`,
         now,
         origin,
-        description: `${monitor.name} の取得に${consecutiveFailures}回連続で失敗しました（${request.status}）。`,
+        description: `${monitor.name} failed to fetch ${consecutiveFailures} times in a row (${request.status}).`,
       });
     }
   }
@@ -122,7 +122,7 @@ async function handleSuccess(
         key: `monitor-fetch-failure:${monitor.id}`,
         now,
         origin,
-        description: `${monitor.name} の取得が復旧しました。`,
+        description: `${monitor.name} has recovered.`,
       });
     }
   }

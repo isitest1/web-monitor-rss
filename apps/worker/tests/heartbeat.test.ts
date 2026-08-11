@@ -60,7 +60,7 @@ describe('runner heartbeat and watchdog', () => {
 
     let rssXml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
     expect(rssXml.split('<item>').length - 1).toBe(1);
-    expect(rssXml).toContain('稼働警告');
+    expect(rssXml).toContain('System Alert');
 
     await runnerRequest('/api/runner/heartbeat', {
       method: 'POST',
@@ -71,7 +71,7 @@ describe('runner heartbeat and watchdog', () => {
     expect(health.status).toBe('healthy');
 
     rssXml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    expect(rssXml).toContain('稼働回復');
+    expect(rssXml).toContain('System Recovery');
     expect(rssXml.split('<item>').length - 1).toBe(2);
   });
 

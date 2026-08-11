@@ -3,17 +3,17 @@ import { layout } from './layout.js';
 export function loginPage(errorMessage?: string): string {
   const errorHtml = errorMessage ? `<p class="status-error">${errorMessage}</p>` : '';
   return layout(
-    'ログイン',
+    'Log In',
     `
 <div class="card" style="max-width: 360px; margin: 3rem auto;">
-  <h1>ログイン</h1>
+  <h1>Log In</h1>
   ${errorHtml}
   <form id="login-form">
     <p>
-      <label for="password">管理者パスワード</label><br />
+      <label for="password">Admin Password</label><br />
       <input type="password" id="password" name="password" required autofocus />
     </p>
-    <input type="submit" value="ログイン" />
+    <input type="submit" value="Log In" />
   </form>
 </div>
 <script>

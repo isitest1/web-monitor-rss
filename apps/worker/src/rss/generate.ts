@@ -12,12 +12,12 @@ import { escapeXml, toRfc822 } from './xml.js';
 export const ITEM_LIMIT = 20;
 
 const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
-  CHANGED: '変更',
-  ADDED: '追加',
-  UPDATED: '更新',
-  REMOVED: '削除',
-  SYSTEM_ALERT: '稼働警告',
-  SYSTEM_RECOVERY: '稼働回復',
+  CHANGED: 'Changed',
+  ADDED: 'Added',
+  UPDATED: 'Updated',
+  REMOVED: 'Removed',
+  SYSTEM_ALERT: 'System Alert',
+  SYSTEM_RECOVERY: 'System Recovery',
 };
 
 function buildTitle(change: Change, monitorName: string | undefined): string {
@@ -25,7 +25,7 @@ function buildTitle(change: Change, monitorName: string | undefined): string {
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
     return label;
   }
-  return `${monitorName ?? '監視対象'} - ${label}`;
+  return `${monitorName ?? 'Monitor'} - ${label}`;
 }
 
 function buildDescription(change: Change): string {
@@ -50,7 +50,7 @@ function buildDescription(change: Change): string {
 }
 
 function formatDisplay(value: string | string[] | undefined): string {
-  if (value === undefined) return '(なし)';
+  if (value === undefined) return '(none)';
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
@@ -67,9 +67,9 @@ function formatScalarDiff(oldValue: string, newValue: string): string {
     diff.removed && diff.added
       ? `${diff.removed} → ${diff.added}`
       : diff.added
-        ? `追加: ${diff.added}`
-        : `削除: ${diff.removed}`;
-  return `${diff.contextBefore}【${core}】${diff.contextAfter}`;
+        ? `Added: ${diff.added}`
+        : `Removed: ${diff.removed}`;
+  return `${diff.contextBefore}[${core}]${diff.contextAfter}`;
 }
 
 /**
@@ -91,9 +91,9 @@ function formatChangeLine(
       newValue,
     );
     const parts: string[] = [];
-    if (added.length > 0) parts.push(`追加: ${added.join(', ')}`);
-    if (removed.length > 0) parts.push(`削除: ${removed.join(', ')}`);
-    const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
+    if (added.length > 0) parts.push(`Added: ${added.join(', ')}`);
+    if (removed.length > 0) parts.push(`Removed: ${removed.join(', ')}`);
+    const diffText = parts.length > 0 ? parts.join(' / ') : '(order changed)';
     return showLabel ? `${label}: ${diffText}` : diffText;
   }
   const diffText =
@@ -145,7 +145,7 @@ export async function generateFeedRss(
     '  <channel>',
     `    <title>${escapeXml(feed.name)}</title>`,
     `    <link>${escapeXml(channelLink)}</link>`,
-    `    <description>${escapeXml(feed.name)} の監視結果</description>`,
+    `    <description>Monitoring results for ${escapeXml(feed.name)}</description>`,
     `    <lastBuildDate>${toRfc822(lastBuildDate)}</lastBuildDate>`,
     items,
     '  </channel>',

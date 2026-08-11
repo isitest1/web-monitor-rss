@@ -296,7 +296,7 @@ describe('list-mode change description shows added/removed instead of full lists
     selectionId = monitor.selections[0]!.id;
   });
 
-  it('shows 追加/削除 instead of the whole before/after list', async () => {
+  it('shows Added/Removed instead of the whole before/after list', async () => {
     await runnerRequest('/api/runner/results', {
       method: 'POST',
       body: JSON.stringify({
@@ -331,15 +331,15 @@ describe('list-mode change description shows added/removed instead of full lists
 
     const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
     const xml = await rssRes.text();
-    expect(xml).toContain('追加: C');
-    expect(xml).toContain('削除: A');
+    expect(xml).toContain('Added: C');
+    expect(xml).toContain('Removed: A');
     expect(xml).not.toContain('A, B &#x2192; B, C');
 
     const admin = await loginAsAdmin(env);
     const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
     const historyHtml = await historyRes.text();
-    expect(historyHtml).toContain('追加: C');
-    expect(historyHtml).toContain('削除: A');
+    expect(historyHtml).toContain('Added: C');
+    expect(historyHtml).toContain('Removed: A');
   });
 });
 
@@ -427,7 +427,7 @@ describe('scalar (text-mode) change description shows only the changed portion i
 
     const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
     const xml = await rssRes.text();
-    expect(xml).toContain('【1 → 2】');
+    expect(xml).toContain('[1 → 2]');
     // The unchanged tail is long enough to be truncated with an ellipsis
     // rather than repeated in full.
     expect(xml).not.toContain('お早めにご検討ください');
@@ -435,7 +435,7 @@ describe('scalar (text-mode) change description shows only the changed portion i
     const admin = await loginAsAdmin(env);
     const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
     const historyHtml = await historyRes.text();
-    expect(historyHtml).toContain('【1 → 2】');
+    expect(historyHtml).toContain('[1 → 2]');
     expect(historyHtml).not.toContain('お早めにご検討ください');
   });
 });

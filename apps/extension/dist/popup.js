@@ -41,20 +41,20 @@
 
   // ../../packages/shared/src/status-label.ts
   function monitorStatusLabel(status, enabled) {
-    if (!enabled) return "Monitor\u7121\u52B9";
+    if (!enabled) return "Monitor disabled";
     switch (status) {
       case "UNCHECKED":
-        return "\u672A\u78BA\u8A8D";
+        return "Not checked yet";
       case "BASELINED":
       case "OK":
-        return "\u5909\u66F4\u306A\u3057";
+        return "No change";
       case "CHANGED":
-        return "\u5909\u66F4\u3042\u308A";
+        return "Changed";
       case "SELECTOR_NOT_FOUND":
       case "SELECTOR_NOT_UNIQUE":
-        return "Selector\u304C\u898B\u3064\u304B\u3089\u306A\u3044";
+        return "Selector not found";
       default:
-        return "\u78BA\u8A8D\u5931\u6557";
+        return "Check failed";
     }
   }
 
@@ -4424,10 +4424,10 @@
   }
   async function runLocalCheckNow(monitorId, button) {
     button.disabled = true;
-    button.textContent = "\u78BA\u8A8D\u4E2D...";
+    button.textContent = "Checking...";
     const result = await sendExtensionMessage({ type: "RUN_LOCAL_CHECK_NOW", monitorId });
     button.disabled = false;
-    button.textContent = result.ok ? "\u78BA\u8A8D\u3057\u307E\u3057\u305F" : "\u4ECA\u3059\u3050\u78BA\u8A8D (\u5931\u6557)";
+    button.textContent = result.ok ? "Checked" : "Check now (failed)";
     setTimeout(() => void loadWatchlist(), 1500);
   }
   function editMonitor(monitor) {
@@ -4446,20 +4446,20 @@
     for (const monitor of monitors) {
       const item = document.createElement("li");
       const label = monitorStatusLabel(monitor.state?.status ?? "UNCHECKED", monitor.enabled);
-      const badge = monitor.executionMode === "local" ? '<span class="badge">\u30ED\u30FC\u30AB\u30EB</span>' : "";
+      const badge = monitor.executionMode === "local" ? '<span class="badge">Local</span>' : "";
       item.innerHTML = `<strong>${escapeHtml(monitor.name)}</strong>${badge}<br /><span class="status">${escapeHtml(label)}</span>`;
       if (monitor.executionMode === "local") {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "check-now-btn";
-        button.textContent = "\u4ECA\u3059\u3050\u78BA\u8A8D";
+        button.textContent = "Check now";
         button.addEventListener("click", () => void runLocalCheckNow(monitor.id, button));
         item.appendChild(button);
       }
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "check-now-btn edit-btn";
-      editButton.textContent = "\u7DE8\u96C6";
+      editButton.textContent = "Edit";
       editButton.addEventListener("click", () => editMonitor(monitor));
       item.appendChild(editButton);
       list.appendChild(item);
@@ -4474,7 +4474,7 @@
     if (!container) return;
     const mode = filterSelect instanceof HTMLSelectElement ? filterSelect.value : "all";
     const filtered = mode === "all" ? allMonitors : allMonitors.filter((m) => m.executionMode === mode);
-    const emptyMessage = allMonitors.length === 0 ? "\u76E3\u8996\u5BFE\u8C61\u304C\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002" : "\u8A72\u5F53\u3059\u308BMonitor\u304C\u3042\u308A\u307E\u305B\u3093\u3002";
+    const emptyMessage = allMonitors.length === 0 ? "No Monitors yet." : "No matching Monitors.";
     renderWatchlist(container, filtered, emptyMessage);
   }
   async function loadWatchlist() {

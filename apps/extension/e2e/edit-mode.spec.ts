@@ -62,7 +62,7 @@ test.describe('editing an existing Monitor', () => {
   });
 
   test('boots into edit mode with the saved selections pre-populated', async ({ page }) => {
-    await expect(page.locator('.panel h2')).toHaveText('Web Monitor RSS - Monitorを編集中');
+    await expect(page.locator('.panel h2')).toHaveText('Web Monitor RSS - Editing Monitor');
     await expect(page.locator('.panel li')).toHaveCount(2);
     await expect(page.locator('.panel input[type="text"]').first()).toHaveValue('既存の監視');
   });
@@ -74,7 +74,7 @@ test.describe('editing an existing Monitor', () => {
     await expect(items.filter({ hasText: '見出し' })).not.toHaveClass(/unresolved/);
     const missingItem = items.filter({ has: page.locator('.unresolved-warning') });
     await expect(missingItem).toHaveCount(1);
-    await expect(missingItem.locator('.unresolved-warning')).toContainText('見つかりません');
+    await expect(missingItem.locator('.unresolved-warning')).toContainText('not found');
   });
 
   test('re-selecting an unresolved item replaces it with a clicked element', async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe('editing an existing Monitor', () => {
       .locator('.panel li')
       .filter({ has: page.locator('.unresolved-warning') });
     await missingItem.locator('.reselect-btn').click();
-    await expect(page.locator('.panel .hint')).toContainText('クリックしてください');
+    await expect(page.locator('.panel .hint')).toContainText('Click the element');
 
     await page.locator('#product-link').click();
 
@@ -104,7 +104,7 @@ test.describe('editing an existing Monitor', () => {
     await page.locator('#product-link').click();
 
     await page.locator('.panel .save-btn').click();
-    await expect(page.locator('.panel .status')).toHaveText('保存しました。');
+    await expect(page.locator('.panel .status')).toHaveText('Saved.');
 
     const message = await page.evaluate(
       () =>
@@ -118,7 +118,7 @@ test.describe('editing an existing Monitor', () => {
 
   test('blocks save while an unresolved selection remains', async ({ page }) => {
     await page.locator('.panel .save-btn').click();
-    await expect(page.locator('.panel .status')).toContainText('見つからない選択があります');
+    await expect(page.locator('.panel .status')).toContainText('could not be found');
 
     const message = await page.evaluate(
       () => (window as unknown as { __lastUpdateMessage?: unknown }).__lastUpdateMessage,

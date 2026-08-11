@@ -18,7 +18,7 @@ form.addEventListener('submit', async (event) => {
     apiBaseUrl: apiBaseUrlInput.value.trim(),
     extensionToken: extensionTokenInput.value.trim(),
   });
-  statusEl.textContent = '保存しました。';
+  statusEl.textContent = 'Saved.';
 });
 
 document.getElementById('test-connection')?.addEventListener('click', async () => {
@@ -26,9 +26,11 @@ document.getElementById('test-connection')?.addEventListener('click', async () =
     apiBaseUrl: apiBaseUrlInput.value.trim(),
     extensionToken: extensionTokenInput.value.trim(),
   });
-  statusEl.textContent = '確認中...';
+  statusEl.textContent = 'Checking...';
   const result = await sendExtensionMessage({ type: 'PING_API' });
-  statusEl.textContent = result.ok ? '接続に成功しました。' : `接続に失敗しました: ${result.error}`;
+  statusEl.textContent = result.ok
+    ? 'Connected successfully.'
+    : `Connection failed: ${result.error}`;
 });
 
 void loadExisting();

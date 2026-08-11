@@ -400,7 +400,7 @@ describe('monitor result processing and change detection', () => {
     let rssXml = await (
       await testApp().request(`/rss/${sysFeedWithToken.rssToken}.xml`, {}, env)
     ).text();
-    expect(rssXml).not.toContain('稼働警告');
+    expect(rssXml).not.toContain('System Alert');
 
     await runnerRequest('/api/runner/results', {
       method: 'POST',
@@ -409,7 +409,7 @@ describe('monitor result processing and change detection', () => {
     rssXml = await (
       await testApp().request(`/rss/${sysFeedWithToken.rssToken}.xml`, {}, env)
     ).text();
-    expect(rssXml).toContain('稼働警告');
+    expect(rssXml).toContain('System Alert');
     expect(rssXml.split('<item>').length - 1).toBe(1);
 
     // Third failure must not add a second alert item.
@@ -429,6 +429,6 @@ describe('monitor result processing and change detection', () => {
     rssXml = await (
       await testApp().request(`/rss/${sysFeedWithToken.rssToken}.xml`, {}, env)
     ).text();
-    expect(rssXml).toContain('稼働回復');
+    expect(rssXml).toContain('System Recovery');
   });
 });

@@ -26,10 +26,10 @@ function escapeHtml(value: string): string {
 
 async function runLocalCheckNow(monitorId: string, button: HTMLButtonElement): Promise<void> {
   button.disabled = true;
-  button.textContent = '確認中...';
+  button.textContent = 'Checking...';
   const result = await sendExtensionMessage<null>({ type: 'RUN_LOCAL_CHECK_NOW', monitorId });
   button.disabled = false;
-  button.textContent = result.ok ? '確認しました' : '今すぐ確認 (失敗)';
+  button.textContent = result.ok ? 'Checked' : 'Check now (failed)';
   setTimeout(() => void loadWatchlist(), 1500);
 }
 
@@ -60,20 +60,20 @@ function renderWatchlist(
   for (const monitor of monitors) {
     const item = document.createElement('li');
     const label = monitorStatusLabel(monitor.state?.status ?? 'UNCHECKED', monitor.enabled);
-    const badge = monitor.executionMode === 'local' ? '<span class="badge">ローカル</span>' : '';
+    const badge = monitor.executionMode === 'local' ? '<span class="badge">Local</span>' : '';
     item.innerHTML = `<strong>${escapeHtml(monitor.name)}</strong>${badge}<br /><span class="status">${escapeHtml(label)}</span>`;
     if (monitor.executionMode === 'local') {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'check-now-btn';
-      button.textContent = '今すぐ確認';
+      button.textContent = 'Check now';
       button.addEventListener('click', () => void runLocalCheckNow(monitor.id, button));
       item.appendChild(button);
     }
     const editButton = document.createElement('button');
     editButton.type = 'button';
     editButton.className = 'check-now-btn edit-btn';
-    editButton.textContent = '編集';
+    editButton.textContent = 'Edit';
     editButton.addEventListener('click', () => editMonitor(monitor));
     item.appendChild(editButton);
     list.appendChild(item);
@@ -91,8 +91,7 @@ function applyModeFilter(): void {
   const mode = filterSelect instanceof HTMLSelectElement ? filterSelect.value : 'all';
   const filtered =
     mode === 'all' ? allMonitors : allMonitors.filter((m) => m.executionMode === mode);
-  const emptyMessage =
-    allMonitors.length === 0 ? '監視対象がまだありません。' : '該当するMonitorがありません。';
+  const emptyMessage = allMonitors.length === 0 ? 'No Monitors yet.' : 'No matching Monitors.';
   renderWatchlist(container, filtered, emptyMessage);
 }
 

@@ -3,7 +3,7 @@
   "name": "Web Monitor RSS - Visual Selector",
   "version": "0.1.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2lW0E6gTcrpcF9DBkPvhXxVnDhsAcVWLkRzKEU9uspRSSj+xNiZ8o5wlCwd+3GsLluoJKoU31I6xiIbE9lW9VrdyQpFuQFTrJ70wpb6bPjWPx5HPTKOhbhBponGSrJEuynv9984ubJbNyi9dbcg9ECTVWyVxItoYCMEkjaIfSgwdiyCXmeLw1RPa3VTvxH8leoPz1ESgn/XbUPP4cAZjfiutZK88ncq/xX3tPc0JunoCJ7eyTSMBxL4PXZaRl+0TePiOolB0XKnkjpJp3cIrBoFMuXS8y14G85KTF+UnAYS35Bl0Qk88Mp3tqn22itQpRQ4aKmSOgA+P4DbJJr2pcwIDAQAB",
-  "description": "個人用Webページ監視サービスのVisual Selector拡張機能",
+  "description": "Visual Selector extension for a personal web page monitoring service",
   "action": {
     "default_popup": "popup.html"
   },

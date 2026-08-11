@@ -29,12 +29,12 @@ export interface PanelCallbacks {
 
 const EXTRACTION_MODES: ExtractionMode[] = ['text', 'html', 'attribute', 'link', 'image', 'list'];
 const EXTRACTION_MODE_LABELS: Record<ExtractionMode, string> = {
-  text: 'テキスト',
+  text: 'Text',
   html: 'HTML',
-  attribute: '属性値',
-  link: 'リンクURL',
-  image: '画像URL',
-  list: '一覧',
+  attribute: 'Attribute',
+  link: 'Link URL',
+  image: 'Image URL',
+  list: 'List',
 };
 
 export function renderPanel(
@@ -46,12 +46,12 @@ export function renderPanel(
 
   const heading = document.createElement('h2');
   heading.textContent = state.editingMonitorId
-    ? 'Web Monitor RSS - Monitorを編集中'
-    : 'Web Monitor RSS - 選択';
+    ? 'Web Monitor RSS - Editing Monitor'
+    : 'Web Monitor RSS - Selection';
   panel.appendChild(heading);
 
   const nameLabel = document.createElement('label');
-  nameLabel.textContent = 'Monitor名';
+  nameLabel.textContent = 'Monitor name';
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.value = state.monitorName;
@@ -60,21 +60,21 @@ export function renderPanel(
   panel.appendChild(nameLabel);
 
   const groupLabel = document.createElement('label');
-  groupLabel.textContent = 'グループ（任意）';
+  groupLabel.textContent = 'Group (optional)';
   const groupInput = document.createElement('input');
   groupInput.type = 'text';
-  groupInput.placeholder = '例：医薬品系、釣果情報';
+  groupInput.placeholder = 'e.g. Pharma, Fishing reports';
   groupInput.value = state.groupName ?? '';
   groupInput.addEventListener('input', () => callbacks.onGroupNameChange(groupInput.value));
   groupLabel.appendChild(groupInput);
   panel.appendChild(groupLabel);
 
   const modeLabel = document.createElement('label');
-  modeLabel.textContent = 'Monitorの種類';
+  modeLabel.textContent = 'Monitor type';
   const modeSelect = document.createElement('select');
   for (const [value, text] of [
-    ['single', '単一要素'],
-    ['list', '一覧（繰り返し）'],
+    ['single', 'Single element'],
+    ['list', 'List (repeating)'],
   ] as const) {
     const option = document.createElement('option');
     option.value = value;
@@ -91,14 +91,14 @@ export function renderPanel(
   const hint = document.createElement('p');
   hint.className = 'hint';
   hint.textContent = state.reselectTargetId
-    ? 'ページ上で置き換える要素をクリックしてください。'
-    : '要素をクリックまたはEnterで選択に追加します。矢印キーで親・子・兄弟要素へ移動、Deleteで選択を削除、Escapeで終了します。保存すると専用のRSS Feedが自動的に作られます。';
+    ? 'Click the element on the page to use as a replacement.'
+    : 'Click an element or press Enter to add it to the selection. Use the arrow keys to move to a parent/child/sibling element, Delete to remove a selection, Escape to finish. A dedicated RSS Feed is created automatically when you save.';
   panel.appendChild(hint);
 
   const fullPageButton = document.createElement('button');
   fullPageButton.type = 'button';
   fullPageButton.className = 'fullpage-btn';
-  fullPageButton.textContent = 'ページ全体を選択に追加';
+  fullPageButton.textContent = 'Add whole page to selection';
   fullPageButton.addEventListener('click', () => callbacks.onAddFullPage());
   panel.appendChild(fullPageButton);
 
@@ -114,14 +114,14 @@ export function renderPanel(
   const cancelButton = document.createElement('button');
   cancelButton.type = 'button';
   cancelButton.className = 'cancel-btn';
-  cancelButton.textContent = 'キャンセル';
+  cancelButton.textContent = 'Cancel';
   cancelButton.addEventListener('click', () => callbacks.onCancel());
   actions.appendChild(cancelButton);
 
   const saveButton = document.createElement('button');
   saveButton.type = 'button';
   saveButton.className = 'save-btn';
-  saveButton.textContent = state.saving ? '保存中...' : '保存';
+  saveButton.textContent = state.saving ? 'Saving...' : 'Save';
   saveButton.disabled = state.saving || state.selections.length === 0;
   saveButton.addEventListener('click', () => callbacks.onSave());
   actions.appendChild(saveButton);
@@ -158,7 +158,7 @@ function renderSelectionItem(
   const deleteButton = document.createElement('button');
   deleteButton.type = 'button';
   deleteButton.className = 'delete-btn';
-  deleteButton.textContent = '削除';
+  deleteButton.textContent = 'Delete';
   deleteButton.addEventListener('click', () => callbacks.onRemove(selection.id));
   row.appendChild(deleteButton);
 
@@ -170,14 +170,14 @@ function renderSelectionItem(
     const isTargeted = state.reselectTargetId === selection.id;
     const warningText = document.createElement('span');
     warningText.textContent = isTargeted
-      ? '置き換える要素をページ上でクリックしてください。'
-      : '要素が見つかりません（サイトが変わった可能性があります）。';
+      ? 'Click the element on the page to use as a replacement.'
+      : 'Element not found (the site may have changed).';
     warning.appendChild(warningText);
     if (!isTargeted) {
       const reselectButton = document.createElement('button');
       reselectButton.type = 'button';
       reselectButton.className = 'reselect-btn';
-      reselectButton.textContent = '再選択';
+      reselectButton.textContent = 'Re-select';
       reselectButton.addEventListener('click', () => callbacks.onReselect(selection.id));
       warning.appendChild(reselectButton);
     }
@@ -186,7 +186,7 @@ function renderSelectionItem(
     const reselectButton = document.createElement('button');
     reselectButton.type = 'button';
     reselectButton.className = 'reselect-btn';
-    reselectButton.textContent = '別の要素に選び直す';
+    reselectButton.textContent = 'Pick a different element';
     reselectButton.addEventListener('click', () => callbacks.onReselect(selection.id));
     item.appendChild(reselectButton);
   }
@@ -206,7 +206,7 @@ function renderSelectionItem(
 
   const preview = document.createElement('div');
   preview.className = 'preview';
-  const matchNote = selection.matchCount > 1 ? `（${selection.matchCount}件に一致） ` : '';
+  const matchNote = selection.matchCount > 1 ? `(matches ${selection.matchCount} elements) ` : '';
   preview.textContent = `${matchNote}${computePreview(selection)}`;
   item.appendChild(preview);
 

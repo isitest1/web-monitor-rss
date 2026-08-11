@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Web Monitor RSS - 設定</title>
+    <title>Web Monitor RSS - Settings</title>
     <style>
       body {
         font-family: system-ui, sans-serif;
@@ -37,10 +37,12 @@
     </style>
   </head>
   <body>
-    <h1>Web Monitor RSS 設定</h1>
+    <h1>Web Monitor RSS Settings</h1>
     <p>
-      Chrome拡張機能がWorker
-      APIへ接続するための設定です。あらかじめ既定値が設定されているため、通常はこの画面を開く必要はありません。トークンを再発行した場合など、既定値を上書きしたいときにのみ使用してください。入力した値はこの拡張機能のローカルストレージにのみ保存されます。
+      Settings for how the Chrome extension connects to the Worker API. Default values are
+      pre-configured, so you normally don't need to open this screen. Use it only to override the
+      defaults, e.g. after reissuing a token. Values you enter are stored only in this extension's
+      local storage.
     </p>
     <form id="config-form">
       <label>
@@ -53,11 +55,11 @@
         />
       </label>
       <label>
-        Extension APIトークン
+        Extension API token
         <input type="password" id="extensionToken" required />
       </label>
-      <button type="submit">保存</button>
-      <button type="button" id="test-connection">接続を確認</button>
+      <button type="submit">Save</button>
+      <button type="button" id="test-connection">Test connection</button>
     </form>
     <p id="status"></p>
     <script src="options.js"></script>
