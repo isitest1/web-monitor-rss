@@ -4403,6 +4403,11 @@
     updatedAt: external_exports.string()
   });
   var selectionInputSchema = external_exports.object({
+    // Present when this input represents an existing, already-saved
+    // Selection being kept or edited in place (extension edit flow); the
+    // repository preserves the row's id so change-detection hashes stay
+    // stable for untouched Selections. Absent means "create as new".
+    id: external_exports.string().optional(),
     label: external_exports.string().min(1).max(200),
     selectorType: selectorTypeSchema,
     selector: external_exports.string().max(2e3),
@@ -4445,6 +4450,7 @@
     }
   }
   var monitorUrlSchema = external_exports.string().url().max(2e3).refine(hasAllowedProtocol, { message: "URL must use http or https" });
+  var groupNameSchema = external_exports.string().trim().min(1).max(100).nullable();
   var monitorSchema = external_exports.object({
     id: external_exports.string(),
     feedId: external_exports.string(),
@@ -4454,6 +4460,7 @@
     comparisonRule: comparisonRuleSchema,
     executionMode: executionModeSchema,
     checkIntervalSec: external_exports.number().int().positive(),
+    groupName: external_exports.string().nullable(),
     enabled: external_exports.boolean(),
     orderIndex: external_exports.number().int().nonnegative(),
     createdAt: external_exports.string(),
@@ -4472,6 +4479,7 @@
     comparisonRule: comparisonRuleSchema.default("normalized_equality"),
     executionMode: executionModeSchema.default("server"),
     checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
+    groupName: groupNameSchema.default(null),
     enabled: external_exports.boolean().default(true),
     orderIndex: external_exports.number().int().nonnegative().default(0),
     selections: external_exports.array(selectionInputSchema).min(1).max(50)
@@ -4484,6 +4492,7 @@
     comparisonRule: comparisonRuleSchema.optional(),
     executionMode: executionModeSchema.optional(),
     checkIntervalSec: checkIntervalSecSchema.optional(),
+    groupName: groupNameSchema.optional(),
     enabled: external_exports.boolean().optional(),
     orderIndex: external_exports.number().int().nonnegative().optional(),
     selections: external_exports.array(selectionInputSchema).min(1).max(50).optional()
@@ -4664,6 +4673,9 @@
   .panel .fullpage-btn { background: #eef2ff; color: #3730a3; width: 100%; margin-top: 8px; padding: 6px; border: none; border-radius: 6px; }
   .panel .cancel-btn { background: #e5e5e5; color: #1a1a1a; }
   .panel .status { margin-top: 8px; font-size: 11px; }
+  .panel li.unresolved { border-color: #fca5a5; background: #fff5f5; }
+  .panel .unresolved-warning { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; font-size: 11px; color: #b91c1c; }
+  .panel .reselect-btn { background: #eef2ff; color: #3730a3; border: none; border-radius: 4px; padding: 2px 6px; margin-top: 4px; font-size: 11px; }
 `;
   function createOverlayRoot() {
     const host = document.createElement("div");
@@ -4729,6 +4741,7 @@
     }
   }
   function computePreview(draft) {
+    if (!draft.element) return "(\u8981\u7D20\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u9078\u3073\u76F4\u3057\u3066\u304F\u3060\u3055\u3044)";
     if (draft.extractionMode === "list" && draft.selectorType === "css" && draft.selector) {
       const items = Array.from(document.querySelectorAll(draft.selector)).slice(
         0,
@@ -4752,6 +4765,7 @@
       id: nextSelectionId(),
       label,
       element,
+      resolved: true,
       selectorType: "css",
       selector: best?.selector ?? "",
       selectorCandidates: candidates,
@@ -4767,6 +4781,7 @@
       id: nextSelectionId(),
       label,
       element: document.documentElement,
+      resolved: true,
       selectorType: "document",
       selector: "",
       selectorCandidates: [],
@@ -4791,7 +4806,7 @@
   function renderPanel(panel, state, callbacks) {
     panel.innerHTML = "";
     const heading = document.createElement("h2");
-    heading.textContent = "Web Monitor RSS - \u9078\u629E";
+    heading.textContent = state.editingMonitorId ? "Web Monitor RSS - Monitor\u3092\u7DE8\u96C6\u4E2D" : "Web Monitor RSS - \u9078\u629E";
     panel.appendChild(heading);
     const nameLabel = document.createElement("label");
     nameLabel.textContent = "Monitor\u540D";
@@ -4801,6 +4816,15 @@
     nameInput.addEventListener("input", () => callbacks.onMonitorNameChange(nameInput.value));
     nameLabel.appendChild(nameInput);
     panel.appendChild(nameLabel);
+    const groupLabel = document.createElement("label");
+    groupLabel.textContent = "\u30B0\u30EB\u30FC\u30D7\uFF08\u4EFB\u610F\uFF09";
+    const groupInput = document.createElement("input");
+    groupInput.type = "text";
+    groupInput.placeholder = "\u4F8B\uFF1A\u533B\u85AC\u54C1\u7CFB\u3001\u91E3\u679C\u60C5\u5831";
+    groupInput.value = state.groupName ?? "";
+    groupInput.addEventListener("input", () => callbacks.onGroupNameChange(groupInput.value));
+    groupLabel.appendChild(groupInput);
+    panel.appendChild(groupLabel);
     const modeLabel = document.createElement("label");
     modeLabel.textContent = "Monitor\u306E\u7A2E\u985E";
     const modeSelect = document.createElement("select");
@@ -4822,7 +4846,7 @@
     panel.appendChild(modeLabel);
     const hint = document.createElement("p");
     hint.className = "hint";
-    hint.textContent = "\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u307E\u305F\u306FEnter\u3067\u9078\u629E\u306B\u8FFD\u52A0\u3057\u307E\u3059\u3002\u77E2\u5370\u30AD\u30FC\u3067\u89AA\u30FB\u5B50\u30FB\u5144\u5F1F\u8981\u7D20\u3078\u79FB\u52D5\u3001Delete\u3067\u9078\u629E\u3092\u524A\u9664\u3001Escape\u3067\u7D42\u4E86\u3057\u307E\u3059\u3002\u4FDD\u5B58\u3059\u308B\u3068\u5C02\u7528\u306ERSS Feed\u304C\u81EA\u52D5\u7684\u306B\u4F5C\u3089\u308C\u307E\u3059\u3002";
+    hint.textContent = state.reselectTargetId ? "\u30DA\u30FC\u30B8\u4E0A\u3067\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002" : "\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u307E\u305F\u306FEnter\u3067\u9078\u629E\u306B\u8FFD\u52A0\u3057\u307E\u3059\u3002\u77E2\u5370\u30AD\u30FC\u3067\u89AA\u30FB\u5B50\u30FB\u5144\u5F1F\u8981\u7D20\u3078\u79FB\u52D5\u3001Delete\u3067\u9078\u629E\u3092\u524A\u9664\u3001Escape\u3067\u7D42\u4E86\u3057\u307E\u3059\u3002\u4FDD\u5B58\u3059\u308B\u3068\u5C02\u7528\u306ERSS Feed\u304C\u81EA\u52D5\u7684\u306B\u4F5C\u3089\u308C\u307E\u3059\u3002";
     panel.appendChild(hint);
     const fullPageButton = document.createElement("button");
     fullPageButton.type = "button";
@@ -4832,7 +4856,7 @@
     panel.appendChild(fullPageButton);
     const list = document.createElement("ul");
     for (const selection of state.selections) {
-      list.appendChild(renderSelectionItem(selection, callbacks));
+      list.appendChild(renderSelectionItem(selection, state, callbacks));
     }
     panel.appendChild(list);
     const actions = document.createElement("div");
@@ -4858,8 +4882,9 @@
       panel.appendChild(status);
     }
   }
-  function renderSelectionItem(selection, callbacks) {
+  function renderSelectionItem(selection, state, callbacks) {
     const item = document.createElement("li");
+    if (!selection.resolved) item.className = "unresolved";
     const row = document.createElement("div");
     row.className = "row";
     const labelInput = document.createElement("input");
@@ -4877,6 +4902,30 @@
     deleteButton.addEventListener("click", () => callbacks.onRemove(selection.id));
     row.appendChild(deleteButton);
     item.appendChild(row);
+    if (!selection.resolved) {
+      const warning = document.createElement("div");
+      warning.className = "unresolved-warning";
+      const isTargeted = state.reselectTargetId === selection.id;
+      const warningText = document.createElement("span");
+      warningText.textContent = isTargeted ? "\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30DA\u30FC\u30B8\u4E0A\u3067\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002" : "\u8981\u7D20\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF08\u30B5\u30A4\u30C8\u304C\u5909\u308F\u3063\u305F\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\uFF09\u3002";
+      warning.appendChild(warningText);
+      if (!isTargeted) {
+        const reselectButton = document.createElement("button");
+        reselectButton.type = "button";
+        reselectButton.className = "reselect-btn";
+        reselectButton.textContent = "\u518D\u9078\u629E";
+        reselectButton.addEventListener("click", () => callbacks.onReselect(selection.id));
+        warning.appendChild(reselectButton);
+      }
+      item.appendChild(warning);
+    } else {
+      const reselectButton = document.createElement("button");
+      reselectButton.type = "button";
+      reselectButton.className = "reselect-btn";
+      reselectButton.textContent = "\u5225\u306E\u8981\u7D20\u306B\u9078\u3073\u76F4\u3059";
+      reselectButton.addEventListener("click", () => callbacks.onReselect(selection.id));
+      item.appendChild(reselectButton);
+    }
     const modeSelect = document.createElement("select");
     for (const mode of EXTRACTION_MODES) {
       const option = document.createElement("option");
@@ -4914,17 +4963,29 @@
     selections = [];
     monitorMode = "single";
     monitorName = document.title.slice(0, 200);
+    groupName = null;
     statusMessage = "";
     saving = false;
     active = false;
     abortController = new AbortController();
     mutationObserver = null;
     repositionScheduled = false;
-    start() {
+    editingMonitorId = null;
+    /** Set while the user is clicking a replacement element for one unresolved (or explicitly reselected) draft, instead of adding a new one. */
+    reselectTargetId = null;
+    start(existing) {
       if (this.active) return;
       this.active = true;
+      if (existing) {
+        this.editingMonitorId = existing.monitorId;
+        this.monitorMode = existing.monitorMode;
+        this.monitorName = existing.monitorName;
+        this.groupName = existing.groupName;
+        this.selections = existing.selections;
+      }
       this.overlay = createOverlayRoot();
       this.attachListeners();
+      this.renderSelectedBoxes();
       this.renderPanel();
     }
     stop() {
@@ -5029,6 +5090,22 @@
       const element = this.navigator.currentElement;
       const candidates = generateSelectorCandidates(element, document);
       const best = pickBestCandidate(candidates, this.monitorMode);
+      if (this.reselectTargetId) {
+        const target = this.selections.find((s) => s.id === this.reselectTargetId);
+        if (target) {
+          target.element = element;
+          target.resolved = true;
+          target.selectorType = "css";
+          target.selector = best?.selector ?? "";
+          target.selectorCandidates = candidates;
+          target.matchCount = best?.matchCount ?? 0;
+        }
+        this.reselectTargetId = null;
+        this.statusMessage = "";
+        this.renderSelectedBoxes();
+        this.renderPanel();
+        return;
+      }
       const draft = createDraft(
         element,
         candidates,
@@ -5038,6 +5115,11 @@
       );
       this.selections.push(draft);
       this.renderSelectedBoxes();
+      this.renderPanel();
+    }
+    startReselect(id) {
+      this.reselectTargetId = id;
+      this.statusMessage = "\u7F6E\u304D\u63DB\u3048\u308B\u8981\u7D20\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
       this.renderPanel();
     }
     deleteCurrentIfSelected() {
@@ -5063,6 +5145,7 @@
       if (!this.overlay) return;
       this.overlay.selectedBoxesContainer.innerHTML = "";
       for (const selection of this.selections) {
+        if (!selection.element) continue;
         const box = document.createElement("div");
         box.className = "selected-box";
         positionBox(box, selection.element.getBoundingClientRect());
@@ -5074,13 +5157,19 @@
       const state = {
         monitorName: this.monitorName,
         monitorMode: this.monitorMode,
+        groupName: this.groupName,
         selections: this.selections,
         statusMessage: this.statusMessage,
-        saving: this.saving
+        saving: this.saving,
+        editingMonitorId: this.editingMonitorId,
+        reselectTargetId: this.reselectTargetId
       };
       renderPanel(this.overlay.panel, state, {
         onMonitorNameChange: (value) => {
           this.monitorName = value;
+        },
+        onGroupNameChange: (value) => {
+          this.groupName = value.trim() === "" ? null : value.trim();
         },
         onMonitorModeChange: (mode) => {
           this.monitorMode = mode;
@@ -5098,6 +5187,7 @@
           }
         },
         onRemove: (id) => this.removeSelection(id),
+        onReselect: (id) => this.startReselect(id),
         onAddFullPage: () => {
           this.selections.push(createFullPageDraft(`\u30DA\u30FC\u30B8\u5168\u4F53${this.selections.length + 1}`));
           this.renderPanel();
@@ -5108,31 +5198,51 @@
     }
     async save() {
       if (this.selections.length === 0) return;
+      if (this.selections.some((s) => !s.resolved)) {
+        this.statusMessage = "\u898B\u3064\u304B\u3089\u306A\u3044\u9078\u629E\u304C\u3042\u308A\u307E\u3059\u3002\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u9078\u3073\u76F4\u3059\u304B\u3001\u524A\u9664\u3057\u3066\u304B\u3089\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+        this.renderPanel();
+        return;
+      }
       this.saving = true;
       this.statusMessage = "";
       this.renderPanel();
-      const payload = {
-        name: this.monitorName || document.title || location.href,
-        url: location.href,
-        monitorMode: this.monitorMode,
-        comparisonRule: "normalized_equality",
-        executionMode: "server",
-        checkIntervalSec: 86400,
-        enabled: true,
-        orderIndex: 0,
-        selections: this.selections.map((selection, index) => ({
-          label: selection.label,
-          selectorType: selection.selectorType,
-          selector: selection.selector,
-          selectorCandidates: selection.selectorCandidates,
-          extractionMode: selection.extractionMode,
-          attributeName: selection.attributeName,
-          normalization: selection.normalization,
-          matchMode: selection.matchMode,
-          orderIndex: index
-        }))
-      };
-      const result = await sendExtensionMessage({ type: "CREATE_MONITOR", payload });
+      const selectionInputs = this.selections.map((selection, index) => ({
+        ...selection.savedId ? { id: selection.savedId } : {},
+        label: selection.label,
+        selectorType: selection.selectorType,
+        selector: selection.selector,
+        selectorCandidates: selection.selectorCandidates,
+        extractionMode: selection.extractionMode,
+        attributeName: selection.attributeName,
+        normalization: selection.normalization,
+        matchMode: selection.matchMode,
+        orderIndex: index
+      }));
+      const result = this.editingMonitorId ? await sendExtensionMessage({
+        type: "UPDATE_MONITOR",
+        monitorId: this.editingMonitorId,
+        payload: {
+          name: this.monitorName || document.title || location.href,
+          url: location.href,
+          monitorMode: this.monitorMode,
+          groupName: this.groupName,
+          selections: selectionInputs
+        }
+      }) : await sendExtensionMessage({
+        type: "CREATE_MONITOR",
+        payload: {
+          name: this.monitorName || document.title || location.href,
+          url: location.href,
+          monitorMode: this.monitorMode,
+          comparisonRule: "normalized_equality",
+          executionMode: "server",
+          checkIntervalSec: 86400,
+          groupName: this.groupName,
+          enabled: true,
+          orderIndex: 0,
+          selections: selectionInputs
+        }
+      });
       this.saving = false;
       if (result.ok) {
         this.statusMessage = "\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002";
@@ -5145,10 +5255,76 @@
     }
   };
 
+  // src/content/resolve-draft.ts
+  function resolveElement(selection) {
+    if (selection.selectorType === "document") return document.documentElement;
+    try {
+      return document.querySelector(selection.selector);
+    } catch {
+      return null;
+    }
+  }
+  function countMatches(selection) {
+    if (selection.selectorType === "document") return 1;
+    try {
+      return document.querySelectorAll(selection.selector).length;
+    } catch {
+      return 0;
+    }
+  }
+  function resolveDraftFromSelection(selection) {
+    const element = resolveElement(selection);
+    return {
+      id: selection.id,
+      savedId: selection.id,
+      label: selection.label,
+      element,
+      resolved: element !== null,
+      selectorType: selection.selectorType,
+      selector: selection.selector,
+      selectorCandidates: selection.selectorCandidates,
+      matchCount: element ? countMatches(selection) : 0,
+      extractionMode: selection.extractionMode,
+      attributeName: selection.attributeName,
+      matchMode: selection.matchMode,
+      normalization: selection.normalization
+    };
+  }
+
   // src/content/index.ts
-  if (!window.__webMonitorSelectionController) {
+  var PENDING_EDIT_STORAGE_KEY = "editingMonitorId";
+  async function consumePendingEditMonitorId() {
+    const stored = await chrome.storage.session.get(PENDING_EDIT_STORAGE_KEY);
+    const monitorId = stored[PENDING_EDIT_STORAGE_KEY];
+    if (typeof monitorId !== "string") return null;
+    await chrome.storage.session.remove(PENDING_EDIT_STORAGE_KEY);
+    return monitorId;
+  }
+  async function bootstrap() {
+    if (window.__webMonitorSelectionController) return;
     const controller = new SelectionController();
     window.__webMonitorSelectionController = controller;
-    void controller.start();
+    const monitorId = await consumePendingEditMonitorId();
+    if (!monitorId) {
+      void controller.start();
+      return;
+    }
+    const result = await sendExtensionMessage({
+      type: "GET_MONITOR",
+      monitorId
+    });
+    if (!result.ok) {
+      void controller.start();
+      return;
+    }
+    const monitor = result.data;
+    controller.start({
+      monitorId: monitor.id,
+      monitorMode: monitor.monitorMode,
+      monitorName: monitor.name,
+      groupName: monitor.groupName,
+      selections: monitor.selections.map((selection) => resolveDraftFromSelection(selection))
+    });
   }
+  void bootstrap();
 })();

@@ -70,6 +70,7 @@ test.describe('end-to-end: Selection definition to RSS item', () => {
       comparisonRule: 'normalized_equality',
       executionMode: 'server',
       checkIntervalSec: 86400,
+      groupName: null,
       enabled: true,
       orderIndex: 0,
       selections: [

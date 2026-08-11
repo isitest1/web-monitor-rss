@@ -79,6 +79,15 @@ export async function listSelectionsByMonitorIds(
   return map;
 }
 
+/**
+ * Upserts by id rather than blind delete+reinsert: a Selection kept across
+ * an edit (input.id matches an existing row for this Monitor) keeps its
+ * database id, since computeResultHash/diffSelectionIds key off selectionId
+ * (§8.4) — regenerating ids for untouched Selections would make the next
+ * check misreport them as changed. Inputs with no id, or an id that isn't
+ * one of this Monitor's own rows, are inserted as new. Existing rows whose
+ * id is no longer present in `inputs` are deleted (removed by the caller).
+ */
 export async function replaceSelectionsForMonitor(
   db: D1Database,
   monitorId: string,
@@ -86,31 +95,67 @@ export async function replaceSelectionsForMonitor(
   idGenerator: () => string,
   now: string,
 ): Promise<void> {
-  await db.prepare('DELETE FROM selections WHERE monitor_id = ?').bind(monitorId).run();
+  const existing = await listSelectionsByMonitor(db, monitorId);
+  const existingIds = new Set(existing.map((s) => s.id));
+  const keepIds = new Set(
+    inputs.map((i) => i.id).filter((id): id is string => id !== undefined && existingIds.has(id)),
+  );
+
+  for (const row of existing) {
+    if (!keepIds.has(row.id)) {
+      await db.prepare('DELETE FROM selections WHERE id = ?').bind(row.id).run();
+    }
+  }
+
   for (const input of inputs) {
-    await db
-      .prepare(
-        `INSERT INTO selections (
-          id, monitor_id, label, selector_type, selector, selector_candidates_json,
-          extraction_mode, attribute_name, normalization_json, match_mode, order_index,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        idGenerator(),
-        monitorId,
-        input.label,
-        input.selectorType,
-        input.selector,
-        JSON.stringify(input.selectorCandidates),
-        input.extractionMode,
-        input.attributeName,
-        JSON.stringify(input.normalization ?? DEFAULT_NORMALIZATION_CONFIG),
-        input.matchMode,
-        input.orderIndex,
-        now,
-        now,
-      )
-      .run();
+    if (input.id && keepIds.has(input.id)) {
+      await db
+        .prepare(
+          `UPDATE selections
+           SET label = ?, selector_type = ?, selector = ?, selector_candidates_json = ?,
+               extraction_mode = ?, attribute_name = ?, normalization_json = ?, match_mode = ?,
+               order_index = ?, updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(
+          input.label,
+          input.selectorType,
+          input.selector,
+          JSON.stringify(input.selectorCandidates),
+          input.extractionMode,
+          input.attributeName,
+          JSON.stringify(input.normalization ?? DEFAULT_NORMALIZATION_CONFIG),
+          input.matchMode,
+          input.orderIndex,
+          now,
+          input.id,
+        )
+        .run();
+    } else {
+      await db
+        .prepare(
+          `INSERT INTO selections (
+            id, monitor_id, label, selector_type, selector, selector_candidates_json,
+            extraction_mode, attribute_name, normalization_json, match_mode, order_index,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          idGenerator(),
+          monitorId,
+          input.label,
+          input.selectorType,
+          input.selector,
+          JSON.stringify(input.selectorCandidates),
+          input.extractionMode,
+          input.attributeName,
+          JSON.stringify(input.normalization ?? DEFAULT_NORMALIZATION_CONFIG),
+          input.matchMode,
+          input.orderIndex,
+          now,
+          now,
+        )
+        .run();
+    }
   }
 }

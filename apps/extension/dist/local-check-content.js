@@ -4228,6 +4228,11 @@
   });
   var HTML_EXTRACTION_MAX_LENGTH = 2e4;
   var selectionInputSchema = external_exports.object({
+    // Present when this input represents an existing, already-saved
+    // Selection being kept or edited in place (extension edit flow); the
+    // repository preserves the row's id so change-detection hashes stay
+    // stable for untouched Selections. Absent means "create as new".
+    id: external_exports.string().optional(),
     label: external_exports.string().min(1).max(200),
     selectorType: selectorTypeSchema,
     selector: external_exports.string().max(2e3),
@@ -4270,6 +4275,7 @@
     }
   }
   var monitorUrlSchema = external_exports.string().url().max(2e3).refine(hasAllowedProtocol, { message: "URL must use http or https" });
+  var groupNameSchema = external_exports.string().trim().min(1).max(100).nullable();
   var monitorSchema = external_exports.object({
     id: external_exports.string(),
     feedId: external_exports.string(),
@@ -4279,6 +4285,7 @@
     comparisonRule: comparisonRuleSchema,
     executionMode: executionModeSchema,
     checkIntervalSec: external_exports.number().int().positive(),
+    groupName: external_exports.string().nullable(),
     enabled: external_exports.boolean(),
     orderIndex: external_exports.number().int().nonnegative(),
     createdAt: external_exports.string(),
@@ -4297,6 +4304,7 @@
     comparisonRule: comparisonRuleSchema.default("normalized_equality"),
     executionMode: executionModeSchema.default("server"),
     checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
+    groupName: groupNameSchema.default(null),
     enabled: external_exports.boolean().default(true),
     orderIndex: external_exports.number().int().nonnegative().default(0),
     selections: external_exports.array(selectionInputSchema).min(1).max(50)
@@ -4309,6 +4317,7 @@
     comparisonRule: comparisonRuleSchema.optional(),
     executionMode: executionModeSchema.optional(),
     checkIntervalSec: checkIntervalSecSchema.optional(),
+    groupName: groupNameSchema.optional(),
     enabled: external_exports.boolean().optional(),
     orderIndex: external_exports.number().int().nonnegative().optional(),
     selections: external_exports.array(selectionInputSchema).min(1).max(50).optional()

@@ -4168,6 +4168,11 @@
     updatedAt: external_exports.string()
   });
   var selectionInputSchema = external_exports.object({
+    // Present when this input represents an existing, already-saved
+    // Selection being kept or edited in place (extension edit flow); the
+    // repository preserves the row's id so change-detection hashes stay
+    // stable for untouched Selections. Absent means "create as new".
+    id: external_exports.string().optional(),
     label: external_exports.string().min(1).max(200),
     selectorType: selectorTypeSchema,
     selector: external_exports.string().max(2e3),
@@ -4210,6 +4215,7 @@
     }
   }
   var monitorUrlSchema = external_exports.string().url().max(2e3).refine(hasAllowedProtocol, { message: "URL must use http or https" });
+  var groupNameSchema = external_exports.string().trim().min(1).max(100).nullable();
   var monitorSchema = external_exports.object({
     id: external_exports.string(),
     feedId: external_exports.string(),
@@ -4219,6 +4225,7 @@
     comparisonRule: comparisonRuleSchema,
     executionMode: executionModeSchema,
     checkIntervalSec: external_exports.number().int().positive(),
+    groupName: external_exports.string().nullable(),
     enabled: external_exports.boolean(),
     orderIndex: external_exports.number().int().nonnegative(),
     createdAt: external_exports.string(),
@@ -4237,6 +4244,7 @@
     comparisonRule: comparisonRuleSchema.default("normalized_equality"),
     executionMode: executionModeSchema.default("server"),
     checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
+    groupName: groupNameSchema.default(null),
     enabled: external_exports.boolean().default(true),
     orderIndex: external_exports.number().int().nonnegative().default(0),
     selections: external_exports.array(selectionInputSchema).min(1).max(50)
@@ -4249,6 +4257,7 @@
     comparisonRule: comparisonRuleSchema.optional(),
     executionMode: executionModeSchema.optional(),
     checkIntervalSec: checkIntervalSecSchema.optional(),
+    groupName: groupNameSchema.optional(),
     enabled: external_exports.boolean().optional(),
     orderIndex: external_exports.number().int().nonnegative().optional(),
     selections: external_exports.array(selectionInputSchema).min(1).max(50).optional()
@@ -4421,6 +4430,34 @@
     button.textContent = result.ok ? "\u78BA\u8A8D\u3057\u307E\u3057\u305F" : "\u4ECA\u3059\u3050\u78BA\u8A8D (\u5931\u6557)";
     setTimeout(() => void loadWatchlist(), 1500);
   }
+  function waitForTabComplete(tabId) {
+    return new Promise((resolve) => {
+      function listener(updatedTabId, info) {
+        if (updatedTabId === tabId && info.status === "complete") {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  }
+  async function editMonitor(monitor) {
+    await chrome.storage.session.set({ editingMonitorId: monitor.id });
+    const [existingTab] = await chrome.tabs.query({ url: monitor.url });
+    let tabId;
+    if (existingTab?.id) {
+      tabId = existingTab.id;
+      await chrome.tabs.update(tabId, { active: true });
+      if (existingTab.status !== "complete") await waitForTabComplete(tabId);
+    } else {
+      const created = await chrome.tabs.create({ url: monitor.url, active: true });
+      tabId = created.id;
+      if (tabId) await waitForTabComplete(tabId);
+    }
+    if (!tabId) return;
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+    window.close();
+  }
   function renderWatchlist(container, monitors, emptyMessage) {
     if (monitors.length === 0) {
       container.innerHTML = `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
@@ -4440,6 +4477,12 @@
         button.addEventListener("click", () => void runLocalCheckNow(monitor.id, button));
         item.appendChild(button);
       }
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "check-now-btn edit-btn";
+      editButton.textContent = "\u7DE8\u96C6";
+      editButton.addEventListener("click", () => void editMonitor(monitor));
+      item.appendChild(editButton);
       list.appendChild(item);
     }
     container.innerHTML = "";

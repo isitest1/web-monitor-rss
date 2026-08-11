@@ -1,4 +1,4 @@
-import type { Change, ChangeType, Feed } from '@web-monitor/shared';
+import { diffArrayValues, type Change, type ChangeType, type Feed } from '@web-monitor/shared';
 import { listChangesByFeed } from '../db/repositories/changes.js';
 import { getMonitorNamesByIds } from '../db/repositories/monitors.js';
 import { escapeXml, toRfc822 } from './xml.js';
@@ -38,11 +38,7 @@ function buildDescription(change: Change): string {
     const oldValue = oldById.get(id);
     const newValue = newById.get(id);
     const label = newValue?.label ?? oldValue?.label ?? id;
-    const oldDisplay = formatDisplay(oldValue?.displayValue);
-    const newDisplay = formatDisplay(newValue?.displayValue);
-    return ids.length > 1
-      ? `${label}: ${oldDisplay} → ${newDisplay}`
-      : `${oldDisplay} → ${newDisplay}`;
+    return formatChangeLine(label, oldValue?.displayValue, newValue?.displayValue, ids.length > 1);
   });
   return lines.join('\n');
 }
@@ -50,6 +46,34 @@ function buildDescription(change: Change): string {
 function formatDisplay(value: string | string[] | undefined): string {
   if (value === undefined) return '(なし)';
   return Array.isArray(value) ? value.join(', ') : value;
+}
+
+/**
+ * For a list-mode (array-valued) Selection, shows which entries were added/
+ * removed instead of the whole before/after list (§ Feature: 一覧差分表示)
+ * — much more scannable for a repeating structure with many unchanged
+ * items. Scalar Selections keep the plain "旧 → 新" format.
+ */
+function formatChangeLine(
+  label: string,
+  oldValue: string | string[] | undefined,
+  newValue: string | string[] | undefined,
+  showLabel: boolean,
+): string {
+  if (Array.isArray(newValue)) {
+    const { added, removed } = diffArrayValues(
+      Array.isArray(oldValue) ? oldValue : undefined,
+      newValue,
+    );
+    const parts: string[] = [];
+    if (added.length > 0) parts.push(`追加: ${added.join(', ')}`);
+    if (removed.length > 0) parts.push(`削除: ${removed.join(', ')}`);
+    const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
+    return showLabel ? `${label}: ${diffText}` : diffText;
+  }
+  const oldDisplay = formatDisplay(oldValue);
+  const newDisplay = formatDisplay(newValue);
+  return showLabel ? `${label}: ${oldDisplay} → ${newDisplay}` : `${oldDisplay} → ${newDisplay}`;
 }
 
 export interface RssGenerationResult {

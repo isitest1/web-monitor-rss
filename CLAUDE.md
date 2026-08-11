@@ -420,6 +420,7 @@ monitor_mode
 comparison_rule
 execution_mode           -- server または local（既定server）
 check_interval_sec       -- 確認間隔（秒）。既定86400、最短3600
+group_name               -- 任意の分類名（NULL=未分類）
 enabled
 order_index
 created_at
@@ -619,9 +620,11 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - 連続失敗回数
 - 実行方式（サーバー／ローカル）の切り替え
 - 確認間隔の設定
+- グループ（任意の分類名）の設定と、グループによる絞り込み
 - 有効・無効の切り替え
 - 元ページを開く
-- 選択範囲を編集する
+- 選択範囲を編集する（Chrome拡張機能のポップアップから対象ページを開いて編集する。Watchlist自体はSelectorの選び直しを行わない）
+- 複数Monitorを選択した一括操作（有効化・無効化・実行方式変更・確認間隔変更・削除）
 - 手動確認を要求する
 - 変更履歴を表示する
 - RSS URLをコピーする
@@ -716,6 +719,8 @@ pnpm ciは、format確認、lint、型検査、unit test、build、安定したi
 - Monitorごとの確認間隔（check_interval_sec）による間引き（due判定）の境界値
 - execution_modeによるRunner向け・拡張機能向けMonitor一覧の振り分けと、それぞれのtoken分離
 - 拡張機能のDOM抽出とRunnerのPlaywright抽出の結果整合性（同じstatus code・正規化）
+- Monitor編集時、既存Selectionのidが保持され、編集していないSelectionが次回チェックで誤って変更ありと判定されないこと
+- 一覧（配列）差分表示（追加・削除）がRSSと管理画面で一致すること
 
 ## 15. GitHub Actions
 

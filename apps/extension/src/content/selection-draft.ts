@@ -12,7 +12,12 @@ import {
 export interface SelectionDraft {
   id: string;
   label: string;
-  element: Element;
+  /** Null when editing an existing Monitor and this Selection's saved selector no longer resolves on the current page (needs re-selecting; §Selectorの自動修復禁止 — never auto-switched). */
+  element: Element | null;
+  /** False only for a draft rebuilt from a saved Selection whose selector didn't resolve. */
+  resolved: boolean;
+  /** Set when this draft represents an existing, already-saved Selection (edit mode) — sent back as `id` on save so the row (and its change-detection identity) is preserved rather than recreated. */
+  savedId?: string;
   selectorType: SelectorType;
   selector: string;
   selectorCandidates: SelectorCandidate[];
@@ -65,6 +70,7 @@ export function computePreview(
     'selector' | 'selectorType' | 'extractionMode' | 'attributeName' | 'element'
   >,
 ): string {
+  if (!draft.element) return '(要素が見つかりません。クリックして選び直してください)';
   if (draft.extractionMode === 'list' && draft.selectorType === 'css' && draft.selector) {
     const items = Array.from(document.querySelectorAll(draft.selector)).slice(
       0,
@@ -102,6 +108,7 @@ export function createDraft(
     id: nextSelectionId(),
     label,
     element,
+    resolved: true,
     selectorType: 'css',
     selector: best?.selector ?? '',
     selectorCandidates: candidates,
@@ -118,6 +125,7 @@ export function createFullPageDraft(label: string): SelectionDraft {
     id: nextSelectionId(),
     label,
     element: document.documentElement,
+    resolved: true,
     selectorType: 'document',
     selector: '',
     selectorCandidates: [],

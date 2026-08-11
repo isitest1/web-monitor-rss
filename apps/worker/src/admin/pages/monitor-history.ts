@@ -1,4 +1,4 @@
-import type { Change, Check, Monitor } from '@web-monitor/shared';
+import { diffArrayValues, type Change, type Check, type Monitor } from '@web-monitor/shared';
 import { layout } from './layout.js';
 import { escapeHtml } from './escape.js';
 
@@ -10,6 +10,26 @@ function formatDate(iso: string | null): string {
 function formatValue(value: string | string[] | undefined): string {
   if (value === undefined) return '(なし)';
   return Array.isArray(value) ? value.join(', ') : value;
+}
+
+/** Mirrors apps/worker/src/rss/generate.ts's formatChangeLine so the admin history and RSS descriptions agree on how a list-mode change reads. */
+function formatChangeLine(
+  label: string,
+  oldValue: string | string[] | undefined,
+  newValue: string | string[] | undefined,
+): string {
+  if (Array.isArray(newValue)) {
+    const { added, removed } = diffArrayValues(
+      Array.isArray(oldValue) ? oldValue : undefined,
+      newValue,
+    );
+    const parts: string[] = [];
+    if (added.length > 0) parts.push(`追加: ${added.join(', ')}`);
+    if (removed.length > 0) parts.push(`削除: ${removed.join(', ')}`);
+    const diffText = parts.length > 0 ? parts.join(' / ') : '(順序が変わりました)';
+    return `${label}: ${diffText}`;
+  }
+  return `${label}: ${formatValue(oldValue)} → ${formatValue(newValue)}`;
 }
 
 export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: Change[]): string {
@@ -33,7 +53,9 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                 const oldVal = change.oldValue?.find((v) => v.selectionId === id);
                 const newVal = change.newValue?.find((v) => v.selectionId === id);
                 const label = newVal?.label ?? oldVal?.label ?? '';
-                return `${escapeHtml(label)}: ${escapeHtml(formatValue(oldVal?.displayValue))} → ${escapeHtml(formatValue(newVal?.displayValue))}`;
+                return escapeHtml(
+                  formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
+                );
               })
               .join('<br/>')}</td>
           </tr>`,

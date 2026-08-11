@@ -3,11 +3,24 @@ import {
   pickBestCandidate,
   SelectionNavigator,
 } from '@web-monitor/selector-engine';
-import type { CreateMonitorRequest, ExtractionMode, MonitorMode } from '@web-monitor/shared';
+import type {
+  CreateMonitorRequest,
+  ExtractionMode,
+  MonitorMode,
+  UpdateMonitorRequest,
+} from '@web-monitor/shared';
 import { createOverlayRoot, positionBox, type OverlayRoot } from './overlay/shadow-root.js';
 import { renderPanel, type PanelState } from './panel.js';
 import { createDraft, createFullPageDraft, type SelectionDraft } from './selection-draft.js';
 import { sendExtensionMessage } from '../lib/messages.js';
+
+export interface EditModeInit {
+  monitorId: string;
+  monitorMode: MonitorMode;
+  monitorName: string;
+  groupName: string | null;
+  selections: SelectionDraft[];
+}
 
 export class SelectionController {
   private overlay: OverlayRoot | null = null;
@@ -15,18 +28,30 @@ export class SelectionController {
   private selections: SelectionDraft[] = [];
   private monitorMode: MonitorMode = 'single';
   private monitorName = document.title.slice(0, 200);
+  private groupName: string | null = null;
   private statusMessage = '';
   private saving = false;
   private active = false;
   private abortController = new AbortController();
   private mutationObserver: MutationObserver | null = null;
   private repositionScheduled = false;
+  private editingMonitorId: string | null = null;
+  /** Set while the user is clicking a replacement element for one unresolved (or explicitly reselected) draft, instead of adding a new one. */
+  private reselectTargetId: string | null = null;
 
-  start(): void {
+  start(existing?: EditModeInit): void {
     if (this.active) return;
     this.active = true;
+    if (existing) {
+      this.editingMonitorId = existing.monitorId;
+      this.monitorMode = existing.monitorMode;
+      this.monitorName = existing.monitorName;
+      this.groupName = existing.groupName;
+      this.selections = existing.selections;
+    }
     this.overlay = createOverlayRoot();
     this.attachListeners();
+    this.renderSelectedBoxes();
     this.renderPanel();
   }
 
@@ -149,6 +174,24 @@ export class SelectionController {
     const element = this.navigator.currentElement;
     const candidates = generateSelectorCandidates(element, document);
     const best = pickBestCandidate(candidates, this.monitorMode);
+
+    if (this.reselectTargetId) {
+      const target = this.selections.find((s) => s.id === this.reselectTargetId);
+      if (target) {
+        target.element = element;
+        target.resolved = true;
+        target.selectorType = 'css';
+        target.selector = best?.selector ?? '';
+        target.selectorCandidates = candidates;
+        target.matchCount = best?.matchCount ?? 0;
+      }
+      this.reselectTargetId = null;
+      this.statusMessage = '';
+      this.renderSelectedBoxes();
+      this.renderPanel();
+      return;
+    }
+
     const draft = createDraft(
       element,
       candidates,
@@ -158,6 +201,12 @@ export class SelectionController {
     );
     this.selections.push(draft);
     this.renderSelectedBoxes();
+    this.renderPanel();
+  }
+
+  private startReselect(id: string): void {
+    this.reselectTargetId = id;
+    this.statusMessage = '置き換える要素をクリックしてください。';
     this.renderPanel();
   }
 
@@ -187,6 +236,7 @@ export class SelectionController {
     if (!this.overlay) return;
     this.overlay.selectedBoxesContainer.innerHTML = '';
     for (const selection of this.selections) {
+      if (!selection.element) continue;
       const box = document.createElement('div');
       box.className = 'selected-box';
       positionBox(box, selection.element.getBoundingClientRect());
@@ -199,13 +249,19 @@ export class SelectionController {
     const state: PanelState = {
       monitorName: this.monitorName,
       monitorMode: this.monitorMode,
+      groupName: this.groupName,
       selections: this.selections,
       statusMessage: this.statusMessage,
       saving: this.saving,
+      editingMonitorId: this.editingMonitorId,
+      reselectTargetId: this.reselectTargetId,
     };
     renderPanel(this.overlay.panel, state, {
       onMonitorNameChange: (value) => {
         this.monitorName = value;
+      },
+      onGroupNameChange: (value) => {
+        this.groupName = value.trim() === '' ? null : value.trim();
       },
       onMonitorModeChange: (mode) => {
         this.monitorMode = mode;
@@ -223,6 +279,7 @@ export class SelectionController {
         }
       },
       onRemove: (id) => this.removeSelection(id),
+      onReselect: (id) => this.startReselect(id),
       onAddFullPage: () => {
         this.selections.push(createFullPageDraft(`ページ全体${this.selections.length + 1}`));
         this.renderPanel();
@@ -234,33 +291,56 @@ export class SelectionController {
 
   private async save(): Promise<void> {
     if (this.selections.length === 0) return;
+    if (this.selections.some((s) => !s.resolved)) {
+      this.statusMessage =
+        '見つからない選択があります。クリックして選び直すか、削除してから保存してください。';
+      this.renderPanel();
+      return;
+    }
     this.saving = true;
     this.statusMessage = '';
     this.renderPanel();
 
-    const payload: CreateMonitorRequest = {
-      name: this.monitorName || document.title || location.href,
-      url: location.href,
-      monitorMode: this.monitorMode,
-      comparisonRule: 'normalized_equality',
-      executionMode: 'server',
-      checkIntervalSec: 86400,
-      enabled: true,
-      orderIndex: 0,
-      selections: this.selections.map((selection, index) => ({
-        label: selection.label,
-        selectorType: selection.selectorType,
-        selector: selection.selector,
-        selectorCandidates: selection.selectorCandidates,
-        extractionMode: selection.extractionMode satisfies ExtractionMode,
-        attributeName: selection.attributeName,
-        normalization: selection.normalization,
-        matchMode: selection.matchMode,
-        orderIndex: index,
-      })),
-    };
+    const selectionInputs = this.selections.map((selection, index) => ({
+      ...(selection.savedId ? { id: selection.savedId } : {}),
+      label: selection.label,
+      selectorType: selection.selectorType,
+      selector: selection.selector,
+      selectorCandidates: selection.selectorCandidates,
+      extractionMode: selection.extractionMode satisfies ExtractionMode,
+      attributeName: selection.attributeName,
+      normalization: selection.normalization,
+      matchMode: selection.matchMode,
+      orderIndex: index,
+    }));
 
-    const result = await sendExtensionMessage({ type: 'CREATE_MONITOR', payload });
+    const result = this.editingMonitorId
+      ? await sendExtensionMessage({
+          type: 'UPDATE_MONITOR',
+          monitorId: this.editingMonitorId,
+          payload: {
+            name: this.monitorName || document.title || location.href,
+            url: location.href,
+            monitorMode: this.monitorMode,
+            groupName: this.groupName,
+            selections: selectionInputs,
+          } satisfies UpdateMonitorRequest,
+        })
+      : await sendExtensionMessage({
+          type: 'CREATE_MONITOR',
+          payload: {
+            name: this.monitorName || document.title || location.href,
+            url: location.href,
+            monitorMode: this.monitorMode,
+            comparisonRule: 'normalized_equality',
+            executionMode: 'server',
+            checkIntervalSec: 86400,
+            groupName: this.groupName,
+            enabled: true,
+            orderIndex: 0,
+            selections: selectionInputs,
+          } satisfies CreateMonitorRequest,
+        });
     this.saving = false;
     if (result.ok) {
       this.statusMessage = '保存しました。';

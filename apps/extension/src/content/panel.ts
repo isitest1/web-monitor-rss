@@ -4,17 +4,24 @@ import { computePreview, type SelectionDraft } from './selection-draft.js';
 export interface PanelState {
   monitorName: string;
   monitorMode: MonitorMode;
+  groupName: string | null;
   selections: SelectionDraft[];
   statusMessage: string;
   saving: boolean;
+  /** Non-null when editing an already-saved Monitor instead of creating a new one. */
+  editingMonitorId: string | null;
+  /** Draft id currently awaiting a replacement click, if any. */
+  reselectTargetId: string | null;
 }
 
 export interface PanelCallbacks {
   onMonitorNameChange: (value: string) => void;
+  onGroupNameChange: (value: string) => void;
   onMonitorModeChange: (mode: MonitorMode) => void;
   onLabelChange: (id: string, label: string) => void;
   onExtractionModeChange: (id: string, mode: ExtractionMode) => void;
   onRemove: (id: string) => void;
+  onReselect: (id: string) => void;
   onAddFullPage: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -38,7 +45,9 @@ export function renderPanel(
   panel.innerHTML = '';
 
   const heading = document.createElement('h2');
-  heading.textContent = 'Web Monitor RSS - 選択';
+  heading.textContent = state.editingMonitorId
+    ? 'Web Monitor RSS - Monitorを編集中'
+    : 'Web Monitor RSS - 選択';
   panel.appendChild(heading);
 
   const nameLabel = document.createElement('label');
@@ -49,6 +58,16 @@ export function renderPanel(
   nameInput.addEventListener('input', () => callbacks.onMonitorNameChange(nameInput.value));
   nameLabel.appendChild(nameInput);
   panel.appendChild(nameLabel);
+
+  const groupLabel = document.createElement('label');
+  groupLabel.textContent = 'グループ（任意）';
+  const groupInput = document.createElement('input');
+  groupInput.type = 'text';
+  groupInput.placeholder = '例：医薬品系、釣果情報';
+  groupInput.value = state.groupName ?? '';
+  groupInput.addEventListener('input', () => callbacks.onGroupNameChange(groupInput.value));
+  groupLabel.appendChild(groupInput);
+  panel.appendChild(groupLabel);
 
   const modeLabel = document.createElement('label');
   modeLabel.textContent = 'Monitorの種類';
@@ -71,8 +90,9 @@ export function renderPanel(
 
   const hint = document.createElement('p');
   hint.className = 'hint';
-  hint.textContent =
-    '要素をクリックまたはEnterで選択に追加します。矢印キーで親・子・兄弟要素へ移動、Deleteで選択を削除、Escapeで終了します。保存すると専用のRSS Feedが自動的に作られます。';
+  hint.textContent = state.reselectTargetId
+    ? 'ページ上で置き換える要素をクリックしてください。'
+    : '要素をクリックまたはEnterで選択に追加します。矢印キーで親・子・兄弟要素へ移動、Deleteで選択を削除、Escapeで終了します。保存すると専用のRSS Feedが自動的に作られます。';
   panel.appendChild(hint);
 
   const fullPageButton = document.createElement('button');
@@ -84,7 +104,7 @@ export function renderPanel(
 
   const list = document.createElement('ul');
   for (const selection of state.selections) {
-    list.appendChild(renderSelectionItem(selection, callbacks));
+    list.appendChild(renderSelectionItem(selection, state, callbacks));
   }
   panel.appendChild(list);
 
@@ -116,8 +136,13 @@ export function renderPanel(
   }
 }
 
-function renderSelectionItem(selection: SelectionDraft, callbacks: PanelCallbacks): HTMLLIElement {
+function renderSelectionItem(
+  selection: SelectionDraft,
+  state: PanelState,
+  callbacks: PanelCallbacks,
+): HTMLLIElement {
   const item = document.createElement('li');
+  if (!selection.resolved) item.className = 'unresolved';
 
   const row = document.createElement('div');
   row.className = 'row';
@@ -138,6 +163,33 @@ function renderSelectionItem(selection: SelectionDraft, callbacks: PanelCallback
   row.appendChild(deleteButton);
 
   item.appendChild(row);
+
+  if (!selection.resolved) {
+    const warning = document.createElement('div');
+    warning.className = 'unresolved-warning';
+    const isTargeted = state.reselectTargetId === selection.id;
+    const warningText = document.createElement('span');
+    warningText.textContent = isTargeted
+      ? '置き換える要素をページ上でクリックしてください。'
+      : '要素が見つかりません（サイトが変わった可能性があります）。';
+    warning.appendChild(warningText);
+    if (!isTargeted) {
+      const reselectButton = document.createElement('button');
+      reselectButton.type = 'button';
+      reselectButton.className = 'reselect-btn';
+      reselectButton.textContent = '再選択';
+      reselectButton.addEventListener('click', () => callbacks.onReselect(selection.id));
+      warning.appendChild(reselectButton);
+    }
+    item.appendChild(warning);
+  } else {
+    const reselectButton = document.createElement('button');
+    reselectButton.type = 'button';
+    reselectButton.className = 'reselect-btn';
+    reselectButton.textContent = '別の要素に選び直す';
+    reselectButton.addEventListener('click', () => callbacks.onReselect(selection.id));
+    item.appendChild(reselectButton);
+  }
 
   const modeSelect = document.createElement('select');
   for (const mode of EXTRACTION_MODES) {

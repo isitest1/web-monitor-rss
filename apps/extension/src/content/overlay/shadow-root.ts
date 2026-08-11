@@ -53,6 +53,9 @@ const STYLES = `
   .panel .fullpage-btn { background: #eef2ff; color: #3730a3; width: 100%; margin-top: 8px; padding: 6px; border: none; border-radius: 6px; }
   .panel .cancel-btn { background: #e5e5e5; color: #1a1a1a; }
   .panel .status { margin-top: 8px; font-size: 11px; }
+  .panel li.unresolved { border-color: #fca5a5; background: #fff5f5; }
+  .panel .unresolved-warning { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; font-size: 11px; color: #b91c1c; }
+  .panel .reselect-btn { background: #eef2ff; color: #3730a3; border: none; border-radius: 4px; padding: 2px 6px; margin-top: 4px; font-size: 11px; }
 `;
 
 export interface OverlayRoot {

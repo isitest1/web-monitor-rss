@@ -33,6 +33,40 @@ async function runLocalCheckNow(monitorId: string, button: HTMLButtonElement): P
   setTimeout(() => void loadWatchlist(), 1500);
 }
 
+function waitForTabComplete(tabId: number): Promise<void> {
+  return new Promise((resolve) => {
+    function listener(updatedTabId: number, info: chrome.tabs.TabChangeInfo): void {
+      if (updatedTabId === tabId && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
+// Stashes the target Monitor id via chrome.storage.session (executeScript's
+// `files` form carries no argument payload) so content/index.ts can pick it
+// up and enter edit mode once injected, matching the extension's normal
+// "start-selection" injection mechanism instead of a bespoke message path.
+async function editMonitor(monitor: MonitorListItem): Promise<void> {
+  await chrome.storage.session.set({ editingMonitorId: monitor.id });
+  const [existingTab] = await chrome.tabs.query({ url: monitor.url });
+  let tabId: number | undefined;
+  if (existingTab?.id) {
+    tabId = existingTab.id;
+    await chrome.tabs.update(tabId, { active: true });
+    if (existingTab.status !== 'complete') await waitForTabComplete(tabId);
+  } else {
+    const created = await chrome.tabs.create({ url: monitor.url, active: true });
+    tabId = created.id;
+    if (tabId) await waitForTabComplete(tabId);
+  }
+  if (!tabId) return;
+  await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
+  window.close();
+}
+
 function renderWatchlist(
   container: HTMLElement,
   monitors: MonitorListItem[],
@@ -56,6 +90,12 @@ function renderWatchlist(
       button.addEventListener('click', () => void runLocalCheckNow(monitor.id, button));
       item.appendChild(button);
     }
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'check-now-btn edit-btn';
+    editButton.textContent = '編集';
+    editButton.addEventListener('click', () => void editMonitor(monitor));
+    item.appendChild(editButton);
     list.appendChild(item);
   }
   container.innerHTML = '';

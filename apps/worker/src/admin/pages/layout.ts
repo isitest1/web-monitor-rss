@@ -112,8 +112,17 @@ export function layout(title: string, bodyHtml: string, options: LayoutOptions =
   .field-row + .field-row { margin-top: 0.35rem; }
   .field-row select { width: auto; min-width: 108px; }
   .field-label { flex: 0 0 auto; display: inline-block; min-width: 2.6em; font-size: 0.72rem; color: var(--muted); }
-  #watchlist-table th:nth-child(1), #watchlist-table td:nth-child(1) { max-width: 150px; }
-  #watchlist-table th:nth-child(2), #watchlist-table td:nth-child(2) { max-width: 160px; }
+  #watchlist-table th:nth-child(1), #watchlist-table td:nth-child(1) { width: 2rem; }
+  #watchlist-table th:nth-child(2), #watchlist-table td:nth-child(2) { max-width: 150px; }
+  #watchlist-table th:nth-child(3), #watchlist-table td:nth-child(3) { max-width: 160px; }
+  .group-input { font-size: 0.75rem; padding: 0.25rem 0.4rem; color: var(--muted); }
+  .bulk-actions-bar {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.85rem; margin-bottom: 0.75rem;
+  }
+  .bulk-group { display: flex; align-items: center; gap: 0.35rem; }
+  .bulk-group select { width: auto; }
   .actions-grid { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); gap: 0.4rem 0.5rem; }
   .action-chip {
     display: inline-flex; align-items: center; justify-content: center; text-align: center;

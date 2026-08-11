@@ -39,6 +39,11 @@ const HTML_EXTRACTION_MAX_LENGTH = 20000;
 
 export const selectionInputSchema = z
   .object({
+    // Present when this input represents an existing, already-saved
+    // Selection being kept or edited in place (extension edit flow); the
+    // repository preserves the row's id so change-detection hashes stay
+    // stable for untouched Selections. Absent means "create as new".
+    id: z.string().optional(),
     label: z.string().min(1).max(200),
     selectorType: selectorTypeSchema,
     selector: z.string().max(2000),

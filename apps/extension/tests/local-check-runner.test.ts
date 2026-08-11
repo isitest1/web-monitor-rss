@@ -104,6 +104,7 @@ function buildMonitor(overrides: Partial<MonitorWithSelections> = {}): MonitorWi
     comparisonRule: 'normalized_equality',
     executionMode: 'local',
     checkIntervalSec: 3600,
+    groupName: null,
     enabled: true,
     orderIndex: 0,
     createdAt: '2025-01-01T00:00:00.000Z',

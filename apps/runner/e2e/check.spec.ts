@@ -15,6 +15,7 @@ function buildMonitor(url: string, selector: string): MonitorWithSelections {
     comparisonRule: 'normalized_equality',
     executionMode: 'server',
     checkIntervalSec: 86400,
+    groupName: null,
     enabled: true,
     orderIndex: 0,
     createdAt: '2025-01-01T00:00:00.000Z',

@@ -9,6 +9,7 @@ interface MonitorRow {
   comparison_rule: string;
   execution_mode: string;
   check_interval_sec: number;
+  group_name: string | null;
   enabled: number;
   order_index: number;
   created_at: string;
@@ -25,6 +26,7 @@ function mapRow(row: MonitorRow): Monitor {
     comparisonRule: row.comparison_rule as ComparisonRule,
     executionMode: row.execution_mode as ExecutionMode,
     checkIntervalSec: row.check_interval_sec,
+    groupName: row.group_name,
     enabled: row.enabled === 1,
     orderIndex: row.order_index,
     createdAt: row.created_at,
@@ -41,6 +43,7 @@ export interface InsertMonitorInput {
   comparisonRule: ComparisonRule;
   executionMode: ExecutionMode;
   checkIntervalSec: number;
+  groupName: string | null;
   enabled: boolean;
   orderIndex: number;
   createdAt: string;
@@ -52,8 +55,8 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
     .prepare(
       `INSERT INTO monitors (
         id, feed_id, name, url, monitor_mode, comparison_rule, execution_mode,
-        check_interval_sec, enabled, order_index, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        check_interval_sec, group_name, enabled, order_index, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       input.id,
@@ -64,6 +67,7 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
       input.comparisonRule,
       input.executionMode,
       input.checkIntervalSec,
+      input.groupName,
       input.enabled ? 1 : 0,
       input.orderIndex,
       input.createdAt,
@@ -122,6 +126,7 @@ export interface UpdateMonitorInput {
   comparisonRule?: ComparisonRule | undefined;
   executionMode?: ExecutionMode | undefined;
   checkIntervalSec?: number | undefined;
+  groupName?: string | null | undefined;
   enabled?: boolean | undefined;
   orderIndex?: number | undefined;
 }
@@ -139,7 +144,7 @@ export async function updateMonitor(
     .prepare(
       `UPDATE monitors
        SET feed_id = ?, name = ?, url = ?, monitor_mode = ?, comparison_rule = ?,
-           execution_mode = ?, check_interval_sec = ?, enabled = ?, order_index = ?, updated_at = ?
+           execution_mode = ?, check_interval_sec = ?, group_name = ?, enabled = ?, order_index = ?, updated_at = ?
        WHERE id = ?`,
     )
     .bind(
@@ -150,6 +155,7 @@ export async function updateMonitor(
       merged.comparisonRule,
       merged.executionMode,
       merged.checkIntervalSec,
+      merged.groupName,
       merged.enabled ? 1 : 0,
       merged.orderIndex,
       updatedAt,
