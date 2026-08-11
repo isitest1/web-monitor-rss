@@ -33,38 +33,18 @@ async function runLocalCheckNow(monitorId: string, button: HTMLButtonElement): P
   setTimeout(() => void loadWatchlist(), 1500);
 }
 
-function waitForTabComplete(tabId: number): Promise<void> {
-  return new Promise((resolve) => {
-    function listener(updatedTabId: number, info: chrome.tabs.TabChangeInfo): void {
-      if (updatedTabId === tabId && info.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
-    }
-    chrome.tabs.onUpdated.addListener(listener);
+// The actual tab-open/wait/inject work runs in the background service
+// worker (START_EDIT_MONITOR), not here: creating/activating a tab shifts
+// window focus away from this popup, and Chrome closes an MV3 action popup
+// (killing its JS) the instant it loses focus — so anything awaited here
+// after that point would simply never run. Fire-and-forget the message and
+// let the popup close naturally as focus moves to the target tab.
+function editMonitor(monitor: MonitorListItem): void {
+  void sendExtensionMessage({
+    type: 'START_EDIT_MONITOR',
+    monitorId: monitor.id,
+    url: monitor.url,
   });
-}
-
-// Stashes the target Monitor id via chrome.storage.session (executeScript's
-// `files` form carries no argument payload) so content/index.ts can pick it
-// up and enter edit mode once injected, matching the extension's normal
-// "start-selection" injection mechanism instead of a bespoke message path.
-async function editMonitor(monitor: MonitorListItem): Promise<void> {
-  await chrome.storage.session.set({ editingMonitorId: monitor.id });
-  const [existingTab] = await chrome.tabs.query({ url: monitor.url });
-  let tabId: number | undefined;
-  if (existingTab?.id) {
-    tabId = existingTab.id;
-    await chrome.tabs.update(tabId, { active: true });
-    if (existingTab.status !== 'complete') await waitForTabComplete(tabId);
-  } else {
-    const created = await chrome.tabs.create({ url: monitor.url, active: true });
-    tabId = created.id;
-    if (tabId) await waitForTabComplete(tabId);
-  }
-  if (!tabId) return;
-  await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
-  window.close();
 }
 
 function renderWatchlist(
@@ -94,7 +74,7 @@ function renderWatchlist(
     editButton.type = 'button';
     editButton.className = 'check-now-btn edit-btn';
     editButton.textContent = '編集';
-    editButton.addEventListener('click', () => void editMonitor(monitor));
+    editButton.addEventListener('click', () => editMonitor(monitor));
     item.appendChild(editButton);
     list.appendChild(item);
   }

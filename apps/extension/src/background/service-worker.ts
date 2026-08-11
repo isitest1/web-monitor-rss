@@ -9,6 +9,7 @@ import {
   updateMonitor,
 } from '../lib/api-client.js';
 import { runDueLocalChecks, runLocalCheck } from './local-check-runner.js';
+import { startEditMonitor } from './edit-monitor.js';
 
 // Best-effort, opt-in-per-Monitor periodic execution (only for Monitors
 // with execution_mode 'local'), matching CLAUDE.md §2/§4.1: the extension
@@ -59,6 +60,9 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResult<u
         await runLocalCheck(config, monitor);
         return { ok: true, data: null };
       }
+      case 'START_EDIT_MONITOR':
+        await startEditMonitor(message.monitorId, message.url);
+        return { ok: true, data: null };
       case 'START_SELECTION_MODE':
         // Handled entirely by the popup (which injects the content script
         // directly); the background worker has no tab context to act on.

@@ -4619,6 +4619,35 @@
     }
   }
 
+  // src/background/edit-monitor.ts
+  function waitForTabComplete(tabId) {
+    return new Promise((resolve) => {
+      function listener(updatedTabId, info) {
+        if (updatedTabId === tabId && info.status === "complete") {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  }
+  async function startEditMonitor(monitorId, url) {
+    await chrome.storage.session.set({ editingMonitorId: monitorId });
+    const [existingTab] = await chrome.tabs.query({ url });
+    let tabId;
+    if (existingTab?.id) {
+      tabId = existingTab.id;
+      await chrome.tabs.update(tabId, { active: true });
+      if (existingTab.status !== "complete") await waitForTabComplete(tabId);
+    } else {
+      const created = await chrome.tabs.create({ url, active: true });
+      tabId = created.id;
+      if (tabId) await waitForTabComplete(tabId);
+    }
+    if (!tabId) return;
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+  }
+
   // src/background/service-worker.ts
   var LOCAL_CHECK_ALARM_NAME = "local-check-tick";
   var LOCAL_CHECK_ALARM_PERIOD_MINUTES = 15;
@@ -4658,6 +4687,9 @@
           await runLocalCheck(config, monitor);
           return { ok: true, data: null };
         }
+        case "START_EDIT_MONITOR":
+          await startEditMonitor(message.monitorId, message.url);
+          return { ok: true, data: null };
         case "START_SELECTION_MODE":
           return { ok: false, error: "unsupported from background" };
       }

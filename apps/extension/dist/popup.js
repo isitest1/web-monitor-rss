@@ -4430,33 +4430,12 @@
     button.textContent = result.ok ? "\u78BA\u8A8D\u3057\u307E\u3057\u305F" : "\u4ECA\u3059\u3050\u78BA\u8A8D (\u5931\u6557)";
     setTimeout(() => void loadWatchlist(), 1500);
   }
-  function waitForTabComplete(tabId) {
-    return new Promise((resolve) => {
-      function listener(updatedTabId, info) {
-        if (updatedTabId === tabId && info.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      }
-      chrome.tabs.onUpdated.addListener(listener);
+  function editMonitor(monitor) {
+    void sendExtensionMessage({
+      type: "START_EDIT_MONITOR",
+      monitorId: monitor.id,
+      url: monitor.url
     });
-  }
-  async function editMonitor(monitor) {
-    await chrome.storage.session.set({ editingMonitorId: monitor.id });
-    const [existingTab] = await chrome.tabs.query({ url: monitor.url });
-    let tabId;
-    if (existingTab?.id) {
-      tabId = existingTab.id;
-      await chrome.tabs.update(tabId, { active: true });
-      if (existingTab.status !== "complete") await waitForTabComplete(tabId);
-    } else {
-      const created = await chrome.tabs.create({ url: monitor.url, active: true });
-      tabId = created.id;
-      if (tabId) await waitForTabComplete(tabId);
-    }
-    if (!tabId) return;
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
-    window.close();
   }
   function renderWatchlist(container, monitors, emptyMessage) {
     if (monitors.length === 0) {
@@ -4481,7 +4460,7 @@
       editButton.type = "button";
       editButton.className = "check-now-btn edit-btn";
       editButton.textContent = "\u7DE8\u96C6";
-      editButton.addEventListener("click", () => void editMonitor(monitor));
+      editButton.addEventListener("click", () => editMonitor(monitor));
       item.appendChild(editButton);
       list.appendChild(item);
     }

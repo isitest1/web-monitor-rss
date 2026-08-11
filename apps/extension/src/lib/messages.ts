@@ -12,7 +12,8 @@ export type ExtensionMessage =
   | { type: 'SET_MONITOR_ENABLED'; monitorId: string; enabled: boolean }
   | { type: 'PING_API' }
   | { type: 'START_SELECTION_MODE'; monitorMode: 'single' | 'list' }
-  | { type: 'RUN_LOCAL_CHECK_NOW'; monitorId: string };
+  | { type: 'RUN_LOCAL_CHECK_NOW'; monitorId: string }
+  | { type: 'START_EDIT_MONITOR'; monitorId: string; url: string };
 
 export type MessageResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
