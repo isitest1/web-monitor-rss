@@ -1,3 +1,9 @@
+# Public template with placeholder values: used for local dev, `wrangler
+# dev`, and CI (vitest-pool-workers reads this for local-only test D1
+# bindings, so the placeholder database_id is fine there). For an actual
+# deployment, copy this file to wrangler.production.toml (gitignored, see
+# SETUP.md) with your real database_id / origins / GitHub repo, and deploy
+# with `wrangler deploy --config wrangler.production.toml`.
 name = "web-monitor-rss-worker"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
@@ -6,7 +12,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "web-monitor-rss"
-database_id = "60fb57cd-e6ce-472d-aa20-47470155e4cf"
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
 [triggers]
@@ -20,12 +26,12 @@ crons = ["0 * * * *"]
 # be invalidated any time via /api/auth/logout or a fresh Worker deploy.
 ADMIN_SESSION_TTL_SEC = "31536000"
 DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
-ADMIN_ALLOWED_ORIGIN = "https://web-monitor-rss-worker.kouhei1.workers.dev"
-EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh"
+ADMIN_ALLOWED_ORIGIN = "https://YOUR_WORKER_SUBDOMAIN.workers.dev"
+EXTENSION_ALLOWED_ORIGIN = "chrome-extension://YOUR_EXTENSION_ID"
 # Where a newly created Monitor's immediate-baseline-check workflow_dispatch
 # is sent. Not secret; GITHUB_DISPATCH_TOKEN below is what authorizes it.
-GITHUB_REPO_OWNER = "isitest1"
-GITHUB_REPO_NAME = "web-monitor-rss"
+GITHUB_REPO_OWNER = "YOUR_GITHUB_USERNAME"
+GITHUB_REPO_NAME = "YOUR_REPOSITORY_NAME"
 GITHUB_WORKFLOW_FILE = "daily-monitor.yml"
 
 # Secrets (set via `wrangler secret put`, never committed):

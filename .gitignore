@@ -8,6 +8,7 @@ build/
 !.dev.vars.example
 .env
 .env.*
+wrangler.production.toml
 *.log
 coverage/
 playwright-report/

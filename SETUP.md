@@ -109,13 +109,21 @@ export CLOUDFLARE_ACCOUNT_ID='your-account-id'
 
 ## 7. Cloudflare D1の作成
 
+apps/worker/wrangler.tomlはリポジトリに公開commitされるテンプレートであり、database_id、ADMIN_ALLOWED_ORIGIN、EXTENSION_ALLOWED_ORIGIN、GITHUB_REPO_OWNER、GITHUB_REPO_NAMEはプレースホルダーのままにしてください。実際にdeployする際は、このファイルをapps/worker/wrangler.production.toml（.gitignore対象、コミットしない）としてコピーし、そちらへ実際の値を設定します。
+
+```
+cp apps/worker/wrangler.toml apps/worker/wrangler.production.toml
+```
+
+以降、本番deployおよび本番D1へのmigration適用は、常にwrangler.production.tomlを使うscript（`pnpm --filter @web-monitor/worker run deploy:production`、`pnpm --filter @web-monitor/worker run db:migrate:remote:production`）を使用してください。ローカル開発・テスト・CIはwrangler.tomlのプレースホルダー値のままで問題ありません（vitest-pool-workersはローカルのみのD1エミュレーションに使うため、database_idが実在するIDである必要はありません）。
+
 Workerプロジェクトが作成された後、コンテナ内で実行します。
 
 ```
 wrangler d1 create web-monitor-rss
 ```
 
-表示されたdatabase IDをapps/worker/wrangler.tomlのD1 bindingへ設定します。
+表示されたdatabase IDをapps/worker/wrangler.production.tomlのD1 bindingへ設定します。
 
 ローカルDBへmigrationを適用します。
 
@@ -126,7 +134,7 @@ pnpm --filter @web-monitor/worker db:migrate:local
 本番D1へ適用する場合は、内容を確認してから実行します。
 
 ```
-pnpm --filter @web-monitor/worker db:migrate:remote
+pnpm --filter @web-monitor/worker db:migrate:remote:production
 ```
 
 migrationには、監視用のテーブルに加えて、稼働監視用のsystem_stateと、管理画面ログイン用のadmin_sessionsが含まれます。feedsテーブルには、RSSトークンのハッシュ、発行日時、状態（active / revoked）などの列が含まれます。
@@ -152,15 +160,15 @@ openssl rand -hex 32
 Workerへ登録します。
 
 ```
-wrangler secret put ADMIN_LOGIN_SECRET --config apps/worker/wrangler.toml
-wrangler secret put EXTENSION_API_TOKEN --config apps/worker/wrangler.toml
-wrangler secret put RUNNER_API_TOKEN --config apps/worker/wrangler.toml
+wrangler secret put ADMIN_LOGIN_SECRET --config apps/worker/wrangler.production.toml
+wrangler secret put EXTENSION_API_TOKEN --config apps/worker/wrangler.production.toml
+wrangler secret put RUNNER_API_TOKEN --config apps/worker/wrangler.production.toml
 ```
 
 セッション署名やトークンのハッシュ化に鍵が必要な場合は、次も登録します。
 
 ```
-wrangler secret put SESSION_SIGNING_SECRET --config apps/worker/wrangler.toml
+wrangler secret put SESSION_SIGNING_SECRET --config apps/worker/wrangler.production.toml
 ```
 
 RSS URLにはこれらの管理用トークンを使用しません。RSSごとに別のランダムなトークンをアプリケーション側で発行します。個人単一利用者向けの運用判断として、D1にはハッシュに加えて平文も保存し、管理画面のWatchlist画面からいつでもRSS URLを確認できるようにしています（管理画面自体がCookieセッションで保護されているため）。RSS配信自体の認証は引き続きハッシュ照合で行います。
@@ -172,10 +180,10 @@ Monitorを新規作成した瞬間や、管理画面の「今すぐ確認」ボ�
 GitHub側でActionsをトリガーできるトークン（`repo`と`workflow`スコープを持つPersonal Access Token、または`gh auth token`で取得できる値）を用意し、Workerへ登録します。
 
 ```
-wrangler secret put GITHUB_DISPATCH_TOKEN --config apps/worker/wrangler.toml
+wrangler secret put GITHUB_DISPATCH_TOKEN --config apps/worker/wrangler.production.toml
 ```
 
-さらに`apps/worker/wrangler.toml`の`[vars]`にある`GITHUB_REPO_OWNER`、`GITHUB_REPO_NAME`、`GITHUB_WORKFLOW_FILE`が、実際のリポジトリ名と一致していることを確認してください（この値は秘密情報ではないため、wrangler.tomlにコミットされています）。
+さらに`apps/worker/wrangler.production.toml`の`[vars]`にある`GITHUB_REPO_OWNER`、`GITHUB_REPO_NAME`、`GITHUB_WORKFLOW_FILE`が、実際のリポジトリ名と一致していることを確認してください。GitHubのユーザー名やリポジトリ名は秘密情報ではありませんが、個人を特定しうる設定のため、公開commitされるwrangler.tomlにはプレースホルダーのまま残し、実際の値はwrangler.production.tomlだけに設定します。
 
 ## 9. Worker cron（ハートビート）の設定
 
@@ -280,7 +288,7 @@ MacのChromeからDev Container内のファイルを直接選択しにくい場�
 
 拡張機能には、Worker APIへ接続するためのExtension APIトークンを設定します。トークン値は拡張機能の設定画面へ入力し、ソースコードへ直接記載しないでください。
 
-`chrome://extensions/`に表示される拡張機能ID（`chrome-extension://` に続く英数字）を確認し、apps/worker/wrangler.tomlの`EXTENSION_ALLOWED_ORIGIN`を`chrome-extension://<拡張機能ID>`へ更新してください。この値と一致しないoriginからのAPI要求はCORSで拒否されます。管理画面を別ドメインで配信する場合は、同様に`ADMIN_ALLOWED_ORIGIN`も実際のoriginへ更新してください。
+`chrome://extensions/`に表示される拡張機能ID（`chrome-extension://` に続く英数字）を確認し、apps/worker/wrangler.production.tomlの`EXTENSION_ALLOWED_ORIGIN`を`chrome-extension://<拡張機能ID>`へ更新してください。この値と一致しないoriginからのAPI要求はCORSで拒否されます。管理画面を別ドメインで配信する場合は、同様に`ADMIN_ALLOWED_ORIGIN`も実際のoriginへ更新してください（いずれも公開commitされるwrangler.tomlではなく、wrangler.production.tomlへ設定します）。デプロイ後は`pnpm --filter @web-monitor/worker run deploy:production`を使用してください。
 
 ## 14. Visual Selectorの確認
 
@@ -459,13 +467,13 @@ git ls-remote origin
 ### D1のmigration状況を確認したい
 
 ```
-wrangler d1 migrations list web-monitor-rss --config apps/worker/wrangler.toml
+wrangler d1 migrations list web-monitor-rss --config apps/worker/wrangler.production.toml
 ```
 
 ### Worker cron（watchdog）が動作しているか確認したい
 
 ```
-wrangler tail --config apps/worker/wrangler.toml
+wrangler tail --config apps/worker/wrangler.production.toml
 ```
 
 system_stateのlast_watchdog_checked_atが更新されているかも確認します。

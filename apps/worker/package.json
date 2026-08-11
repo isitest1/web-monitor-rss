@@ -9,8 +9,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --config wrangler.production.toml",
     "db:migrate:local": "wrangler d1 migrations apply web-monitor-rss --local",
     "db:migrate:remote": "wrangler d1 migrations apply web-monitor-rss --remote",
+    "db:migrate:remote:production": "wrangler d1 migrations apply web-monitor-rss --remote --config wrangler.production.toml",
     "db:seed:local": "wrangler d1 execute web-monitor-rss --local --file=./seed.sql"
   },
   "dependencies": {

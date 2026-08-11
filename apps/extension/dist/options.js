@@ -2,8 +2,8 @@
 (() => {
   // src/lib/default-config.ts
   var DEFAULT_CONFIG = {
-    apiBaseUrl: "https://web-monitor-rss-worker.kouhei1.workers.dev",
-    extensionToken: "001b62fe084115ab799dbe28de83e05629dcb8f2da3279555c7a0d51b6b5b6f5"
+    apiBaseUrl: "",
+    extensionToken: ""
   };
 
   // src/lib/storage.ts
