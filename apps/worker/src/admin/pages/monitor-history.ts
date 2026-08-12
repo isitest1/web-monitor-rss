@@ -55,6 +55,17 @@ function formatChangeLine(
   return `${label}: ${diffText}`;
 }
 
+/** Mirrors apps/worker/src/rss/generate.ts's imageTags: <img> tags for a Selection's captured images, linked back to the source page, display-only. */
+function imageTags(images: string[] | undefined, link: string): string {
+  if (!images || images.length === 0) return '';
+  return images
+    .map(
+      (url) =>
+        `<br/><a href="${escapeHtml(link)}" target="_blank" rel="noopener"><img src="${escapeHtml(url)}" alt="" style="max-width:200px;height:auto;" /></a>`,
+    )
+    .join('');
+}
+
 export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: Change[]): string {
   const body = `
 <p><a href="/monitors">&larr; Back to Watchlist</a></p>
@@ -76,8 +87,10 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                 const oldVal = change.oldValue?.find((v) => v.selectionId === id);
                 const newVal = change.newValue?.find((v) => v.selectionId === id);
                 const label = newVal?.label ?? oldVal?.label ?? '';
-                return escapeHtmlMultiline(
-                  formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
+                return (
+                  escapeHtmlMultiline(
+                    formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
+                  ) + imageTags(newVal?.images, monitor.url)
                 );
               })
               .join('<br/>')}</td>

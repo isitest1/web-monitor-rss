@@ -236,6 +236,72 @@ describe('admin UI pages', () => {
     expect(html).not.toMatch(/Item 1[^<]*Item 2/);
   });
 
+  it("renders a Selection's captured images as <img> tags linked to the source page", async () => {
+    const admin = await loginAsAdmin(env);
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Image History Monitor',
+        url: 'https://example.com/image-history',
+        selections: [
+          { label: 'カード', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    const runnerHeaders = { authorization: `Bearer ${env.RUNNER_API_TOKEN}` };
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r1',
+          values: [{ selectionId, label: 'カード', displayValue: 'A', comparisonValue: 'A' }],
+        }),
+      },
+      env,
+    );
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r2',
+          values: [
+            {
+              selectionId,
+              label: 'カード',
+              displayValue: 'B',
+              comparisonValue: 'B',
+              images: ['https://example.com/img1.jpg'],
+            },
+          ],
+        }),
+      },
+      env,
+    );
+
+    const page = await admin.request(`/monitors/${monitor.id}/history`);
+    const html = await page.text();
+    expect(html).toContain(
+      '<a href="https://example.com/image-history" target="_blank" rel="noopener"><img src="https://example.com/img1.jpg"',
+    );
+  });
+
   it('returns 404 for a history page of an unknown monitor', async () => {
     const admin = await loginAsAdmin(env);
     const page = await admin.request('/monitors/does-not-exist/history');

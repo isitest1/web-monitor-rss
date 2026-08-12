@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MONITOR_STATUSES } from '../status-codes.js';
+import { MAX_IMAGES_PER_SELECTION } from './selection.js';
 
 export const monitorStatusSchema = z.enum(MONITOR_STATUSES);
 
@@ -8,6 +9,11 @@ export const extractedSelectionValueSchema = z.object({
   label: z.string(),
   displayValue: z.union([z.string(), z.array(z.string())]),
   comparisonValue: z.union([z.string(), z.array(z.string())]),
+  // Absolute URLs of <img> elements found within a 'text'-mode Selection's
+  // range (§7.4) — display-only, never part of change comparison/hashing
+  // (see computeResultHash), so images changing alone never triggers a
+  // content change or notification.
+  images: z.array(z.string()).max(MAX_IMAGES_PER_SELECTION).optional(),
 });
 export type ExtractedSelectionValue = z.infer<typeof extractedSelectionValueSchema>;
 

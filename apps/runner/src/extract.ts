@@ -1,6 +1,7 @@
 import type { Locator, Page } from 'playwright';
 import {
   HTML_EXTRACTION_MAX_LENGTH,
+  MAX_IMAGES_PER_SELECTION,
   normalizeValue,
   type ExtractedSelectionValue,
   type Selection,
@@ -72,6 +73,30 @@ async function extractOne(
   }
 }
 
+/**
+ * Absolute URLs of <img> descendants within a 'text'-mode Selection's
+ * range, capped and deduplicated — mirrors extractImagesWithin in
+ * packages/selector-engine/src/extract-dom.ts so both extraction paths
+ * agree (§7.4).
+ */
+async function extractImagesWithin(locator: Locator, pageUrl: string): Promise<string[]> {
+  const imgs = await locator.locator('img').all();
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const img of imgs) {
+    if (urls.length >= MAX_IMAGES_PER_SELECTION) break;
+    const currentSrc = await img
+      .evaluate((el) => (el as HTMLImageElement).currentSrc || '')
+      .catch(() => '');
+    const src =
+      currentSrc || resolveAbsoluteUrl(await img.getAttribute('src').catch(() => null), pageUrl);
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    urls.push(src);
+  }
+  return urls;
+}
+
 export async function extractSelection(
   page: Page,
   selection: Selection,
@@ -108,11 +133,16 @@ export async function extractSelection(
 
   const raw = await extractOne(locator, selection, page.url());
   const normalized = normalizeValue(raw, selection.normalization);
+  const images =
+    selection.extractionMode === 'text'
+      ? await extractImagesWithin(locator, page.url())
+      : undefined;
   return {
     selectionId: selection.id,
     label: selection.label,
     displayValue: normalized.displayValue,
     comparisonValue: normalized.comparisonValue,
+    ...(images && images.length > 0 ? { images } : {}),
   };
 }
 

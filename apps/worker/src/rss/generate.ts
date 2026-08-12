@@ -47,10 +47,27 @@ function buildTitle(change: Change, monitorName: string | undefined): string {
   return `${monitorName ?? 'Monitor'} - ${label}`;
 }
 
-function buildDescription(change: Change): string {
+/**
+ * <img> tags (each linked back to the source page) for a Selection's
+ * captured images, display-only — never derived from or affecting the
+ * comparison value. Returns already-HTML-safe markup (values are escaped
+ * here), meant to be appended to an already-escaped text line.
+ */
+function imageTags(images: string[] | undefined, link: string): string {
+  if (!images || images.length === 0) return '';
+  return images
+    .map(
+      (url) =>
+        `<br/><a href="${escapeXml(link)}"><img src="${escapeXml(url)}" alt="" style="max-width:100%;height:auto;" /></a>`,
+    )
+    .join('');
+}
+
+/** Returns HTML already safe to drop directly into <description> — text is escaped internally, so callers must not escape it again. */
+function buildDescription(change: Change, link: string): string {
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
     const detail = change.newValue?.[0]?.displayValue;
-    return typeof detail === 'string' ? detail : '';
+    return typeof detail === 'string' ? escapeXmlMultiline(detail) : '';
   }
   const oldById = new Map((change.oldValue ?? []).map((v) => [v.selectionId, v]));
   const newById = new Map((change.newValue ?? []).map((v) => [v.selectionId, v]));
@@ -63,9 +80,15 @@ function buildDescription(change: Change): string {
     const oldValue = oldById.get(id);
     const newValue = newById.get(id);
     const label = newValue?.label ?? oldValue?.label ?? id;
-    return formatChangeLine(label, oldValue?.displayValue, newValue?.displayValue, ids.length > 1);
+    const line = formatChangeLine(
+      label,
+      oldValue?.displayValue,
+      newValue?.displayValue,
+      ids.length > 1,
+    );
+    return escapeXmlMultiline(line) + imageTags(newValue?.images, link);
   });
-  return lines.join('\n');
+  return lines.join('<br/>');
 }
 
 function formatDisplay(value: string | string[] | undefined): string {
@@ -151,15 +174,15 @@ export async function generateFeedRss(
         change,
         change.monitorId ? monitorNames.get(change.monitorId) : undefined,
       );
-      const description = buildDescription(change);
       const link = change.sourceUrl ?? channelLink;
+      const description = buildDescription(change, link);
       return [
         '    <item>',
         `      <title>${escapeXml(title)}</title>`,
         `      <link>${escapeXml(link)}</link>`,
         `      <guid isPermaLink="false">${escapeXml(change.guid)}</guid>`,
         `      <pubDate>${toRfc822(change.detectedAt)}</pubDate>`,
-        `      <description>${escapeXmlMultiline(description)}</description>`,
+        `      <description>${description}</description>`,
         '    </item>',
       ].join('\n');
     })

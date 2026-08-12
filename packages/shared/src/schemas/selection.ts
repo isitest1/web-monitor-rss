@@ -37,6 +37,9 @@ export type Selection = z.infer<typeof selectionSchema>;
 
 const HTML_EXTRACTION_MAX_LENGTH = 20000;
 
+/** Cap on how many <img> descendants a 'text'-mode Selection captures alongside its text (§7.4). */
+const MAX_IMAGES_PER_SELECTION = 5;
+
 export const selectionInputSchema = z
   .object({
     // Present when this input represents an existing, already-saved
@@ -72,4 +75,4 @@ export const selectionInputSchema = z
   });
 export type SelectionInput = z.infer<typeof selectionInputSchema>;
 
-export { HTML_EXTRACTION_MAX_LENGTH };
+export { HTML_EXTRACTION_MAX_LENGTH, MAX_IMAGES_PER_SELECTION };

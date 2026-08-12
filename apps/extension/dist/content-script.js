@@ -4405,6 +4405,7 @@
     createdAt: external_exports.string(),
     updatedAt: external_exports.string()
   });
+  var MAX_IMAGES_PER_SELECTION = 5;
   var selectionInputSchema = external_exports.object({
     // Present when this input represents an existing, already-saved
     // Selection being kept or edited in place (extension edit flow); the
@@ -4507,7 +4508,12 @@
     selectionId: external_exports.string(),
     label: external_exports.string(),
     displayValue: external_exports.union([external_exports.string(), external_exports.array(external_exports.string())]),
-    comparisonValue: external_exports.union([external_exports.string(), external_exports.array(external_exports.string())])
+    comparisonValue: external_exports.union([external_exports.string(), external_exports.array(external_exports.string())]),
+    // Absolute URLs of <img> elements found within a 'text'-mode Selection's
+    // range (§7.4) — display-only, never part of change comparison/hashing
+    // (see computeResultHash), so images changing alone never triggers a
+    // content change or notification.
+    images: external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION).optional()
   });
   var monitorStateSchema = external_exports.object({
     monitorId: external_exports.string(),

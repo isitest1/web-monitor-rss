@@ -315,6 +315,68 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).not.toMatch(/Item 1[^<]*Item 2/);
   });
 
+  it("renders a Selection's captured images as <img> tags linked to the source page", async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Image Feed', slug: 'image-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'Image Monitor',
+        url: 'https://example.com/card',
+        selections: [
+          { label: 'カード', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r1',
+        values: [{ selectionId, label: 'カード', displayValue: 'A', comparisonValue: 'A' }],
+      }),
+    });
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r2',
+        values: [
+          {
+            selectionId,
+            label: 'カード',
+            displayValue: 'B',
+            comparisonValue: 'B',
+            images: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+          },
+        ],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain(
+      '<a href="https://example.com/card"><img src="https://example.com/img1.jpg" alt="" style="max-width:100%;height:auto;" /></a>',
+    );
+    expect(xml).toContain('img2.jpg');
+  });
+
   it('advertises an hourly interval for the system feed, matching the watchdog cron', async () => {
     const admin = await loginAsAdmin(env);
     const feedRes = await admin.request('/api/feeds', {

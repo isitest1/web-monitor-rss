@@ -57,6 +57,34 @@ test('extracts an attribute value', async ({ page }) => {
   expect(value.displayValue).toBe('価格: ¥1,980');
 });
 
+test('captures absolute URLs of <img> descendants within a text-mode selection', async ({
+  page,
+}) => {
+  const value = await page.evaluate(
+    async (selection) => {
+      return window.SelectorEngine.extractSelectionFromDom(selection as never);
+    },
+    baseSelection({ selector: '#product-card', extractionMode: 'text' }),
+  );
+  expect(value.displayValue).toBe('カード内の説明テキスト');
+  expect(value.images).toEqual([
+    'http://localhost:4173/images/card-1.jpg',
+    'http://localhost:4173/images/card-2.jpg',
+  ]);
+  // Images are display-only and must never affect the comparison value.
+  expect(value.comparisonValue).not.toContain('card-1.jpg');
+});
+
+test('does not attach images for a text-mode selection with none inside it', async ({ page }) => {
+  const value = await page.evaluate(
+    async (selection) => {
+      return window.SelectorEngine.extractSelectionFromDom(selection as never);
+    },
+    baseSelection({ selector: '#headline', extractionMode: 'text' }),
+  );
+  expect(value.images).toBeUndefined();
+});
+
 test('resolves a link href to an absolute URL', async ({ page }) => {
   const value = await page.evaluate(
     async (selection) => {

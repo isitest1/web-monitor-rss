@@ -1,5 +1,6 @@
 import {
   HTML_EXTRACTION_MAX_LENGTH,
+  MAX_IMAGES_PER_SELECTION,
   normalizeValue,
   type ExtractedSelectionValue,
   type Selection,
@@ -88,6 +89,25 @@ function extractOne(element: Element, selection: Selection): string {
   }
 }
 
+/**
+ * Absolute URLs of <img> descendants within a 'text'-mode Selection's
+ * range, capped and deduplicated — display-only enrichment, never part of
+ * the comparison value (§7.4).
+ */
+function extractImagesWithin(element: Element): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const img of element.querySelectorAll('img')) {
+    if (urls.length >= MAX_IMAGES_PER_SELECTION) break;
+    const currentSrc = img instanceof HTMLImageElement ? img.currentSrc : '';
+    const url = currentSrc || resolveAbsoluteUrl(img.getAttribute('src'));
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
+  }
+  return urls;
+}
+
 function extractListItem(element: Element): string {
   return element.textContent ?? '';
 }
@@ -131,11 +151,13 @@ export async function extractSelectionFromDom(
   }
   const raw = extractOne(element, selection);
   const normalized = normalizeValue(raw, selection.normalization);
+  const images = selection.extractionMode === 'text' ? extractImagesWithin(element) : undefined;
   return {
     selectionId: selection.id,
     label: selection.label,
     displayValue: normalized.displayValue,
     comparisonValue: normalized.comparisonValue,
+    ...(images && images.length > 0 ? { images } : {}),
   };
 }
 

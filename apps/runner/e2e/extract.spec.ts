@@ -45,6 +45,31 @@ test.describe('extraction against the static fixture page', () => {
     expect(value.displayValue).toBe('ヒーロー画像');
   });
 
+  test('captures absolute URLs of <img> descendants within a text-mode selection', async ({
+    page,
+  }) => {
+    await page.goto('/static.html');
+    const value = await extractSelection(
+      page,
+      buildSelection({ selector: '#product-card', extractionMode: 'text' }),
+    );
+    expect(value.displayValue).toBe('カード内の説明テキスト');
+    expect(value.images).toEqual([
+      'http://localhost:4173/images/card-1.jpg',
+      'http://localhost:4173/images/card-2.jpg',
+    ]);
+    expect(value.comparisonValue).not.toContain('card-1.jpg');
+  });
+
+  test('does not attach images for a text-mode selection with none inside it', async ({ page }) => {
+    await page.goto('/static.html');
+    const value = await extractSelection(
+      page,
+      buildSelection({ selector: '#headline', extractionMode: 'text' }),
+    );
+    expect(value.images).toBeUndefined();
+  });
+
   test('resolves link hrefs to absolute URLs', async ({ page }) => {
     await page.goto('/static.html');
     const value = await extractSelection(

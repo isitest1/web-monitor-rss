@@ -13,6 +13,15 @@ a version number.
 
 ### Added
 
+- `text`-mode Selections now automatically capture absolute URLs of any
+  `<img>` elements within the selected range (up to 5, deduplicated) and
+  render them, linked back to the source page, in the RSS description and
+  the admin history page. Display-only: image URLs are never part of the
+  comparison value, so images changing alone never triggers a notification.
+- Line breaks in the source markup (e.g. between list items or paragraphs)
+  are now preserved in displayed and RSS-published values instead of being
+  collapsed into one run-on line; comparison values are unaffected, so
+  reformatting-only differences still don't look like a content change.
 - RSS `<ttl>` and `sy:updatePeriod`/`sy:updateFrequency` hints, derived from
   each feed's fastest enabled Monitor, to nudge RSS readers toward polling
   sooner. This is a best-effort signal — most cloud readers (Inoreader
