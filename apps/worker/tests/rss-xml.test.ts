@@ -256,6 +256,65 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).toContain('<sy:updatePeriod>daily</sy:updatePeriod>');
   });
 
+  it('renders a multi-line Selection value as <br/> in the description instead of one run-on line', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Multiline Feed', slug: 'multiline-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'Multiline Monitor',
+        url: 'https://example.com/list',
+        selections: [
+          { label: '一覧', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r1',
+        values: [{ selectionId, label: '一覧', displayValue: 'A', comparisonValue: 'A' }],
+      }),
+    });
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r2',
+        values: [
+          {
+            selectionId,
+            label: '一覧',
+            displayValue: 'Item 1\nItem 2\nItem 3',
+            comparisonValue: 'Item 1 Item 2 Item 3',
+          },
+        ],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('<br/>');
+    expect(xml).not.toMatch(/Item 1[^<]*Item 2/);
+  });
+
   it('advertises an hourly interval for the system feed, matching the watchdog cron', async () => {
     const admin = await loginAsAdmin(env);
     const feedRes = await admin.request('/api/feeds', {

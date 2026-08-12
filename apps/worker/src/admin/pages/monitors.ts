@@ -35,7 +35,12 @@ function statusSortPriority(cls: string, enabled: boolean): number {
 function summarizeValue(state: MonitorState | null): string {
   if (!state?.currentValue || state.currentValue.length === 0) return '(not checked yet)';
   const parts = state.currentValue.slice(0, 2).map((v) => {
-    const display = Array.isArray(v.displayValue) ? v.displayValue.join(', ') : v.displayValue;
+    // Flattened to one line on purpose: this is a truncated, dense
+    // Watchlist-table summary, not the full multi-line value (see the
+    // Monitor's own history page for that).
+    const display = Array.isArray(v.displayValue)
+      ? v.displayValue.join(', ')
+      : v.displayValue.replace(/\n+/g, ' ');
     return `${v.label}: ${display}`;
   });
   const summary = parts.join(' / ');

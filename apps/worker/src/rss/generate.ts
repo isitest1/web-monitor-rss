@@ -11,7 +11,7 @@ import {
   getMinCheckIntervalSecForFeed,
   getMonitorNamesByIds,
 } from '../db/repositories/monitors.js';
-import { escapeXml, toRfc822 } from './xml.js';
+import { escapeXml, escapeXmlMultiline, toRfc822 } from './xml.js';
 
 // The Worker cron watchdog (§8.6) runs hourly regardless of any Monitor's
 // own interval, so that is the honest cadence to advertise for a system
@@ -159,7 +159,7 @@ export async function generateFeedRss(
         `      <link>${escapeXml(link)}</link>`,
         `      <guid isPermaLink="false">${escapeXml(change.guid)}</guid>`,
         `      <pubDate>${toRfc822(change.detectedAt)}</pubDate>`,
-        `      <description>${escapeXml(description)}</description>`,
+        `      <description>${escapeXmlMultiline(description)}</description>`,
         '    </item>',
       ].join('\n');
     })

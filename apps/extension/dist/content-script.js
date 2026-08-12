@@ -4342,8 +4342,11 @@
     removeStrings: [],
     caseInsensitive: false
   };
+  function foldSpecialWhitespace(raw) {
+    return raw.replace(NBSP_PATTERN, " ").replace(ZERO_WIDTH_PATTERN, "");
+  }
   function normalizeDefault(raw) {
-    return raw.replace(NBSP_PATTERN, " ").replace(ZERO_WIDTH_PATTERN, "").replace(/\s+/g, " ").trim();
+    return foldSpecialWhitespace(raw).replace(/\s+/g, " ").trim();
   }
 
   // ../../packages/shared/src/schemas/feed.ts

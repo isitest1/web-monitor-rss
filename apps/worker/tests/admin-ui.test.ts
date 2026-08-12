@@ -172,6 +172,70 @@ describe('admin UI pages', () => {
     expect(html).toContain('Check History');
   });
 
+  it('renders a multi-line Selection value as <br/> in the history page instead of one run-on line', async () => {
+    const admin = await loginAsAdmin(env);
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Multiline History Monitor',
+        url: 'https://example.com/multiline-history',
+        selections: [
+          { label: '一覧', selectorType: 'css', selector: '#v', extractionMode: 'text' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    const runnerHeaders = { authorization: `Bearer ${env.RUNNER_API_TOKEN}` };
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r1',
+          values: [{ selectionId, label: '一覧', displayValue: 'A', comparisonValue: 'A' }],
+        }),
+      },
+      env,
+    );
+    await testApp().request(
+      '/api/runner/results',
+      {
+        method: 'POST',
+        headers: { ...runnerHeaders, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...base,
+          runId: 'r2',
+          values: [
+            {
+              selectionId,
+              label: '一覧',
+              displayValue: 'Item 1\nItem 2\nItem 3',
+              comparisonValue: 'Item 1 Item 2 Item 3',
+            },
+          ],
+        }),
+      },
+      env,
+    );
+
+    const page = await admin.request(`/monitors/${monitor.id}/history`);
+    const html = await page.text();
+    expect(html).toContain('<br/>');
+    expect(html).not.toMatch(/Item 1[^<]*Item 2/);
+  });
+
   it('returns 404 for a history page of an unknown monitor', async () => {
     const admin = await loginAsAdmin(env);
     const page = await admin.request('/monitors/does-not-exist/history');

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDefault, normalizeForComparison, normalizeValue } from './normalize.js';
+import {
+  normalizeDefault,
+  normalizeDisplay,
+  normalizeForComparison,
+  normalizeValue,
+} from './normalize.js';
 
 describe('normalizeDefault', () => {
   it('collapses whitespace and trims', () => {
@@ -16,6 +21,28 @@ describe('normalizeDefault', () => {
 
   it('collapses newlines and tabs into a single space', () => {
     expect(normalizeDefault('line1\n\tline2')).toBe('line1 line2');
+  });
+});
+
+describe('normalizeDisplay', () => {
+  it('preserves line breaks between list-like items in the source markup', () => {
+    expect(normalizeDisplay('Item 1\nItem 2\nItem 3')).toBe('Item 1\nItem 2\nItem 3');
+  });
+
+  it('collapses horizontal whitespace within a line but keeps the line break', () => {
+    expect(normalizeDisplay('  Item   1  \n  Item   2  ')).toBe('Item 1\nItem 2');
+  });
+
+  it('drops blank (whitespace-only, e.g. indentation-only) lines instead of keeping visible gaps', () => {
+    expect(normalizeDisplay('Item 1\n   \n\nItem 2')).toBe('Item 1\nItem 2');
+  });
+
+  it('normalizes CRLF line endings', () => {
+    expect(normalizeDisplay('Item 1\r\nItem 2')).toBe('Item 1\nItem 2');
+  });
+
+  it('still folds non-breaking spaces and strips zero-width characters', () => {
+    expect(normalizeDisplay('hel​lo world')).toBe('hello world');
   });
 });
 
@@ -93,5 +120,16 @@ describe('normalizeValue', () => {
     });
     expect(result.displayValue).toBe('Price: $10.00');
     expect(result.comparisonValue).toBe('price: $10.00');
+  });
+
+  it('preserves line breaks in the display value but still collapses them for comparison', () => {
+    const result = normalizeValue('Item 1\nItem 2', {
+      extractFirstNumber: false,
+      parsePrice: false,
+      removeStrings: [],
+      caseInsensitive: false,
+    });
+    expect(result.displayValue).toBe('Item 1\nItem 2');
+    expect(result.comparisonValue).toBe('Item 1 Item 2');
   });
 });

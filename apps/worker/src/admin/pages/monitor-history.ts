@@ -6,7 +6,7 @@ import {
   type Monitor,
 } from '@web-monitor/shared';
 import { layout } from './layout.js';
-import { escapeHtml } from './escape.js';
+import { escapeHtml, escapeHtmlMultiline } from './escape.js';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
@@ -76,7 +76,7 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                 const oldVal = change.oldValue?.find((v) => v.selectionId === id);
                 const newVal = change.newValue?.find((v) => v.selectionId === id);
                 const label = newVal?.label ?? oldVal?.label ?? '';
-                return escapeHtml(
+                return escapeHtmlMultiline(
                   formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
                 );
               })

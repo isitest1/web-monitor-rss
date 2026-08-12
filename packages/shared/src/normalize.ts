@@ -32,12 +32,38 @@ export const DEFAULT_NORMALIZATION_CONFIG: NormalizationConfig = {
   caseInsensitive: false,
 };
 
+function foldSpecialWhitespace(raw: string): string {
+  return raw.replace(NBSP_PATTERN, ' ').replace(ZERO_WIDTH_PATTERN, '');
+}
+
 /**
- * Baseline cleanup applied to every extracted text value before display or comparison:
- * fold non-breaking spaces, drop zero-width characters, trim, and collapse runs of whitespace.
+ * Baseline cleanup applied to every extracted text value before comparison
+ * (and used directly wherever a compact single-line value is needed, e.g.
+ * live selector previews): fold non-breaking spaces, drop zero-width
+ * characters, trim, and collapse runs of whitespace *including newlines*.
+ * Line breaks are comparison-irrelevant noise here — a page that only
+ * reflows its markup between fetches must not look like a content change.
  */
 export function normalizeDefault(raw: string): string {
-  return raw.replace(NBSP_PATTERN, ' ').replace(ZERO_WIDTH_PATTERN, '').replace(/\s+/g, ' ').trim();
+  return foldSpecialWhitespace(raw).replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Display-oriented cleanup: unlike normalizeDefault, this preserves line
+ * breaks that exist in the source markup (e.g. between list items or
+ * paragraphs in a selected container), since collapsing them made
+ * multi-line source content read as one run-on line in the RSS/admin UI.
+ * Only horizontal whitespace is collapsed within each line; blank
+ * (whitespace-only, e.g. pure indentation) lines are dropped rather than
+ * kept as visible gaps.
+ */
+export function normalizeDisplay(raw: string): string {
+  const lines = foldSpecialWhitespace(raw)
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
+    .filter((line) => line.length > 0);
+  return lines.join('\n');
 }
 
 const FIRST_NUMBER_PATTERN = /-?\d[\d,]*(?:\.\d+)?/;
@@ -111,7 +137,7 @@ export function normalizeValue(
   config: NormalizationConfig = DEFAULT_NORMALIZATION_CONFIG,
 ): NormalizedValue {
   return {
-    displayValue: normalizeDefault(raw),
+    displayValue: normalizeDisplay(raw),
     comparisonValue: normalizeForComparison(raw, config),
   };
 }
