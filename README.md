@@ -142,7 +142,7 @@ pnpm dev          # run everything in watch mode
 pnpm run ci        # format check, lint, typecheck, unit tests, build, e2e
 ```
 
-See [CLAUDE.md](CLAUDE.md) for the full engineering ground rules this project follows (test coverage requirements, data model, API contracts) and [SETUP.md](SETUP.md) for environment setup.
+See [CLAUDE.md](CLAUDE.md) for the full engineering ground rules this project follows (test coverage requirements, data model, API contracts), [SETUP.md](SETUP.md) for environment setup, and [CHANGELOG.md](CHANGELOG.md) for a history of notable changes.
 
 ## Scope
 
