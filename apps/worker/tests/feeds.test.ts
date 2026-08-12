@@ -29,7 +29,7 @@ describe('feed and RSS token lifecycle', () => {
     expect(rssRes.status).toBe(200);
     expect(rssRes.headers.get('content-type')).toContain('application/rss+xml');
     const xml = await rssRes.text();
-    expect(xml).toContain('<rss version="2.0">');
+    expect(xml).toContain('<rss version="2.0"');
     expect(xml).toContain('テストFeed');
     expect(rssRes.headers.get('etag')).toBeTruthy();
   });

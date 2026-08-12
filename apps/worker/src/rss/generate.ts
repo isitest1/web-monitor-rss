@@ -1,13 +1,32 @@
 import {
   diffArrayValues,
   diffScalarText,
+  DEFAULT_CHECK_INTERVAL_SEC,
   type Change,
   type ChangeType,
   type Feed,
 } from '@web-monitor/shared';
 import { listChangesByFeed } from '../db/repositories/changes.js';
-import { getMonitorNamesByIds } from '../db/repositories/monitors.js';
+import {
+  getMinCheckIntervalSecForFeed,
+  getMonitorNamesByIds,
+} from '../db/repositories/monitors.js';
 import { escapeXml, toRfc822 } from './xml.js';
+
+// The Worker cron watchdog (§8.6) runs hourly regardless of any Monitor's
+// own interval, so that is the honest cadence to advertise for a system
+// Feed (heartbeat alerts/recoveries), independent of content Monitors.
+const SYSTEM_FEED_INTERVAL_SEC = 3600;
+
+type SyUpdatePeriod = 'hourly' | 'daily' | 'weekly';
+
+// checkIntervalSecSchema caps at 604800 (7 days), so "weekly" is the
+// coarsest period this can ever need to express.
+function updatePeriodFor(intervalSec: number): SyUpdatePeriod {
+  if (intervalSec <= 3600) return 'hourly';
+  if (intervalSec <= 86400) return 'daily';
+  return 'weekly';
+}
 
 export const ITEM_LIMIT = 20;
 
@@ -119,6 +138,13 @@ export async function generateFeedRss(
 
   const lastBuildDate = changes[0]?.detectedAt ?? feed.updatedAt;
 
+  const intervalSec =
+    feed.kind === 'system'
+      ? SYSTEM_FEED_INTERVAL_SEC
+      : ((await getMinCheckIntervalSecForFeed(db, feed.id)) ?? DEFAULT_CHECK_INTERVAL_SEC);
+  const ttlMinutes = Math.max(1, Math.round(intervalSec / 60));
+  const updatePeriod = updatePeriodFor(intervalSec);
+
   const items = changes
     .map((change) => {
       const title = buildTitle(
@@ -141,12 +167,15 @@ export async function generateFeedRss(
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<rss version="2.0">',
+    '<rss version="2.0" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/">',
     '  <channel>',
     `    <title>${escapeXml(feed.name)}</title>`,
     `    <link>${escapeXml(channelLink)}</link>`,
     `    <description>Monitoring results for ${escapeXml(feed.name)}</description>`,
     `    <lastBuildDate>${toRfc822(lastBuildDate)}</lastBuildDate>`,
+    `    <ttl>${ttlMinutes}</ttl>`,
+    `    <sy:updatePeriod>${updatePeriod}</sy:updatePeriod>`,
+    '    <sy:updateFrequency>1</sy:updateFrequency>',
     items,
     '  </channel>',
     '</rss>',

@@ -599,6 +599,7 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - pubDateはRFC 822互換形式とする。
 - 既定では最新20件を返す。
 - ETag、Last-Modified、適切なCache-Controlを設定する。
+- channelに`<ttl>`および`sy:updatePeriod`/`sy:updateFrequency`（Syndicationモジュール）を設定し、Feedに属する有効なMonitorのうち最短のcheck_interval_secに基づいた巡回間隔の目安をRSSリーダーへ示す（Monitorがない場合は既定値86400秒、システム用Feedはwatchdog cronと同じ1時間を用いる）。これらはRSSリーダー側の対応状況に依存するヒントであり、巡回頻度を保証するものではない。
 - 条件に合う場合は304 Not Modifiedを返す。
 - ページ全体HTML、Cookie、認証情報、機密性のあるrequest情報を含めない。
 - 失効したトークンでのRSS取得は配信を拒否する。有効なトークンでの取得時はrss_token_last_used_atを更新する。

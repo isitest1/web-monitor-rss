@@ -206,4 +206,66 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).toContain('<channel>');
     expect(xml).toContain('</channel>');
   });
+
+  it('advertises <ttl>/sy:updatePeriod matching the fastest enabled Monitor in the feed', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Hourly Feed', slug: 'hourly-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'Daily Monitor',
+        url: 'https://example.com/daily',
+        checkIntervalSec: 86400,
+        selections: [{ label: 'v', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'Hourly Monitor',
+        url: 'https://example.com/hourly',
+        checkIntervalSec: 3600,
+        selections: [{ label: 'v', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"');
+    expect(xml).toContain('<ttl>60</ttl>');
+    expect(xml).toContain('<sy:updatePeriod>hourly</sy:updatePeriod>');
+    expect(xml).toContain('<sy:updateFrequency>1</sy:updateFrequency>');
+  });
+
+  it('falls back to the default daily interval when a feed has no enabled Monitors', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'No Monitors', slug: 'no-monitors-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('<ttl>1440</ttl>');
+    expect(xml).toContain('<sy:updatePeriod>daily</sy:updatePeriod>');
+  });
+
+  it('advertises an hourly interval for the system feed, matching the watchdog cron', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'System', slug: 'system-feed-ttl', kind: 'system' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('<ttl>60</ttl>');
+    expect(xml).toContain('<sy:updatePeriod>hourly</sy:updatePeriod>');
+  });
 });

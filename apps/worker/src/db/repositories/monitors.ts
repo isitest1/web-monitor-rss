@@ -194,6 +194,24 @@ export async function getMonitorNamesByIds(
   return map;
 }
 
+/**
+ * The shortest check_interval_sec among a Feed's enabled Monitors, used to
+ * advertise an honest RSS <ttl>/sy:updatePeriod hint — a Feed whose
+ * Monitors only check daily shouldn't claim to update hourly.
+ */
+export async function getMinCheckIntervalSecForFeed(
+  db: D1Database,
+  feedId: string,
+): Promise<number | undefined> {
+  const row = await db
+    .prepare(
+      'SELECT MIN(check_interval_sec) as min_interval FROM monitors WHERE feed_id = ? AND enabled = 1',
+    )
+    .bind(feedId)
+    .first<{ min_interval: number | null }>();
+  return row?.min_interval ?? undefined;
+}
+
 export async function countMonitorsForFeed(db: D1Database, feedId: string): Promise<number> {
   const row = await db
     .prepare('SELECT COUNT(*) as count FROM monitors WHERE feed_id = ?')
