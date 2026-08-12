@@ -595,7 +595,7 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - channelのtitle、link、description、last build dateを設定する。
 - 変更イベントごとに一つのitemを作成する。
 - GUIDはurn:web-monitor:change:<id-or-uuid>形式の安定した値とする。
-- item titleにはMonitor名と変更種別を含める。
+- item titleにはMonitor名と、実際に変更された内容の要約（旧値と新値の差分）を含め、一覧を見ただけで変更内容が分かるようにする。長さの上限を設け、超える場合は末尾を省略記号で切り詰める。要約が得られない場合に限り、Monitor名と変更種別のみのtitleへ後退する。
 - descriptionには変更されたラベル、旧値、新値を含める。
 - linkは元ページへ向ける。
 - pubDateはRFC 822互換形式とする。
