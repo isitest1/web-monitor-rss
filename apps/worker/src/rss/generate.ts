@@ -170,9 +170,9 @@ function formatChangeLine(
       newValue,
     );
     const parts: string[] = [];
-    if (added.length > 0) parts.push(`Added: ${added.join(', ')}`);
-    if (removed.length > 0) parts.push(`Removed: ${removed.join(', ')}`);
-    const diffText = parts.length > 0 ? parts.join(' / ') : '(order changed)';
+    if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
+    if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
+    const diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
     return showLabel ? `${label}: ${diffText}` : diffText;
   }
   const diffText =

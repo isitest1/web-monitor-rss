@@ -341,6 +341,54 @@ describe('list-mode change description shows added/removed instead of full lists
     expect(historyHtml).toContain('Added: C');
     expect(historyHtml).toContain('Removed: A');
   });
+
+  it('separates multiple added/removed list items with a line break instead of crowding them onto one comma-joined line', async () => {
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        monitorId: monitor.id,
+        runId: 'list-multi-run-1',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: 'SUCCESS',
+        durationMs: 500,
+        httpStatus: 200,
+        values: [{ selectionId, label: '項目', displayValue: ['A'], comparisonValue: ['A'] }],
+      }),
+    });
+
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        monitorId: monitor.id,
+        runId: 'list-multi-run-2',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: 'SUCCESS',
+        durationMs: 500,
+        httpStatus: 200,
+        values: [
+          {
+            selectionId,
+            label: '項目',
+            displayValue: ['A', 'line1\nline2', 'D'],
+            comparisonValue: ['A', 'line1\nline2', 'D'],
+          },
+        ],
+      }),
+    });
+
+    const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
+    const xml = await rssRes.text();
+    expect(xml).toContain('Added: line1<br/>line2<br/>D');
+    expect(xml).not.toContain('line1<br/>line2, D');
+
+    const admin = await loginAsAdmin(env);
+    const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
+    const historyHtml = await historyRes.text();
+    expect(historyHtml).toContain('Added: line1<br/>line2<br/>D');
+    expect(historyHtml).not.toContain('line1<br/>line2, D');
+  });
 });
 
 describe('scalar (text-mode) change description shows only the changed portion in context', () => {
