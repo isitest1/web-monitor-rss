@@ -13,11 +13,6 @@ a version number.
 
 ### Added
 
-- RSS item titles now include a summary of what actually changed (e.g.
-  "Product X: 1,980 → 2,180") instead of just "Product X - Changed", so a
-  feed reader's item list is informative without opening each item. Falls
-  back to the old change-type-only title if there's nothing to summarize;
-  long summaries are truncated with an ellipsis.
 - `text`-mode Selections now automatically capture absolute URLs of any
   `<img>` elements within the selected range (up to 5, deduplicated) and
   render them, linked back to the source page, in the RSS description and

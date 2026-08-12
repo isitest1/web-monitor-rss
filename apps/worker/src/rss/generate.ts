@@ -39,27 +39,12 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   SYSTEM_RECOVERY: 'System Recovery',
 };
 
-const MAX_TITLE_SUMMARY_LENGTH = 100;
-
-/**
- * Puts what actually changed in the title (e.g. "Product X: 1,980 → 2,180")
- * instead of just "Product X - Changed" — readers scanning a feed list
- * shouldn't have to open every item to see what happened. Falls back to
- * the generic change-type label only if there's nothing to summarize.
- */
 function buildTitle(change: Change, monitorName: string | undefined): string {
   const label = CHANGE_TYPE_LABELS[change.changeType];
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
     return label;
   }
-  const summary = computeChangeLines(change)
-    .map(({ line }) => line.replace(/\s*\n+\s*/g, ' '))
-    .join(' / ');
-  const name = monitorName ?? 'Monitor';
-  if (!summary) return `${name} - ${label}`;
-  return summary.length > MAX_TITLE_SUMMARY_LENGTH
-    ? `${name}: ${summary.slice(0, MAX_TITLE_SUMMARY_LENGTH)}…`
-    : `${name}: ${summary}`;
+  return `${monitorName ?? 'Monitor'} - ${label}`;
 }
 
 /**
@@ -78,14 +63,12 @@ function imageTags(images: string[] | undefined, link: string): string {
     .join('');
 }
 
-interface ChangeLine {
-  /** Raw (unescaped) diff text; may contain embedded \n from a multi-line value. */
-  line: string;
-  images: string[] | undefined;
-}
-
-/** Shared by buildTitle (flattened to one line) and buildDescription (kept multi-line, with images). */
-function computeChangeLines(change: Change): ChangeLine[] {
+/** Returns HTML already safe to drop directly into <description> — text is escaped internally, so callers must not escape it again. */
+function buildDescription(change: Change, link: string): string {
+  if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
+    const detail = change.newValue?.[0]?.displayValue;
+    return typeof detail === 'string' ? escapeXmlMultiline(detail) : '';
+  }
   const oldById = new Map((change.oldValue ?? []).map((v) => [v.selectionId, v]));
   const newById = new Map((change.newValue ?? []).map((v) => [v.selectionId, v]));
   const ids =
@@ -93,7 +76,7 @@ function computeChangeLines(change: Change): ChangeLine[] {
   // A Selection's label only disambiguates when more than one changed in
   // the same event; for the common single-Selection Monitor it is just
   // noise (e.g. an unrenamed default "選択1"), so it is omitted then.
-  return ids.map((id) => {
+  const lines = ids.map((id) => {
     const oldValue = oldById.get(id);
     const newValue = newById.get(id);
     const label = newValue?.label ?? oldValue?.label ?? id;
@@ -103,19 +86,8 @@ function computeChangeLines(change: Change): ChangeLine[] {
       newValue?.displayValue,
       ids.length > 1,
     );
-    return { line, images: newValue?.images };
+    return escapeXmlMultiline(line) + imageTags(newValue?.images, link);
   });
-}
-
-/** Returns HTML already safe to drop directly into <description> — text is escaped internally, so callers must not escape it again. */
-function buildDescription(change: Change, link: string): string {
-  if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
-    const detail = change.newValue?.[0]?.displayValue;
-    return typeof detail === 'string' ? escapeXmlMultiline(detail) : '';
-  }
-  const lines = computeChangeLines(change).map(
-    ({ line, images }) => escapeXmlMultiline(line) + imageTags(images, link),
-  );
   return lines.join('<br/>');
 }
 

@@ -78,121 +78,7 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).not.toContain('<script>');
     expect(xml).toContain('&lt;script&gt;');
     expect(xml).toContain('&amp;');
-    expect(xml).toMatch(
-      /<title>Monitor &lt;A&gt; &amp; &quot;B&quot;: \[A &amp; B → &lt;script&gt;&amp;&quot;&apos;\]<\/title>/,
-    );
-  });
-
-  it('puts the actual changed content in the title instead of just the change type', async () => {
-    const admin = await loginAsAdmin(env);
-    const feedRes = await admin.request('/api/feeds', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Title Feed', slug: 'title-feed', kind: 'content' }),
-    });
-    const feed = await feedRes.json<FeedWithPlaintextToken>();
-
-    const monitorRes = await admin.request('/api/monitors', {
-      method: 'POST',
-      body: JSON.stringify({
-        feedId: feed.id,
-        name: 'Price Monitor',
-        url: 'https://example.com/price',
-        selections: [
-          { label: '価格', selectorType: 'css', selector: '#p', extractionMode: 'text' },
-        ],
-      }),
-    });
-    const monitor = await monitorRes.json<MonitorWithSelections>();
-    const selectionId = monitor.selections[0]!.id;
-
-    const base = {
-      monitorId: monitor.id,
-      startedAt: new Date().toISOString(),
-      finishedAt: new Date().toISOString(),
-      status: 'SUCCESS' as const,
-      durationMs: 100,
-      httpStatus: 200,
-    };
-    await runnerRequest('/api/runner/results', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...base,
-        runId: 'r1',
-        values: [{ selectionId, label: '価格', displayValue: '1980', comparisonValue: '1980' }],
-      }),
-    });
-    await runnerRequest('/api/runner/results', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...base,
-        runId: 'r2',
-        values: [{ selectionId, label: '価格', displayValue: '2180', comparisonValue: '2180' }],
-      }),
-    });
-
-    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    // "1980"→"2180" share the "80" suffix, so the scalar diff isolates just
-    // the changed digits (same behavior as the description).
-    expect(xml).toContain('<title>Price Monitor: [19 → 21]80</title>');
-    expect(xml).not.toContain('- Changed<');
-  });
-
-  it('truncates an overly long title summary with an ellipsis', async () => {
-    const admin = await loginAsAdmin(env);
-    const feedRes = await admin.request('/api/feeds', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Long Feed', slug: 'long-title-feed', kind: 'content' }),
-    });
-    const feed = await feedRes.json<FeedWithPlaintextToken>();
-
-    const monitorRes = await admin.request('/api/monitors', {
-      method: 'POST',
-      body: JSON.stringify({
-        feedId: feed.id,
-        name: 'Long Monitor',
-        url: 'https://example.com/long',
-        selections: [
-          { label: '本文', selectorType: 'css', selector: '#b', extractionMode: 'text' },
-        ],
-      }),
-    });
-    const monitor = await monitorRes.json<MonitorWithSelections>();
-    const selectionId = monitor.selections[0]!.id;
-
-    const base = {
-      monitorId: monitor.id,
-      startedAt: new Date().toISOString(),
-      finishedAt: new Date().toISOString(),
-      status: 'SUCCESS' as const,
-      durationMs: 100,
-      httpStatus: 200,
-    };
-    await runnerRequest('/api/runner/results', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...base,
-        runId: 'r1',
-        values: [{ selectionId, label: '本文', displayValue: 'a', comparisonValue: 'a' }],
-      }),
-    });
-    const longValue = 'x'.repeat(200);
-    await runnerRequest('/api/runner/results', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...base,
-        runId: 'r2',
-        values: [
-          { selectionId, label: '本文', displayValue: longValue, comparisonValue: longValue },
-        ],
-      }),
-    });
-
-    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    // The channel itself also has a <title>, so take the item's (the last match).
-    const titles = [...xml.matchAll(/<title>(.*?)<\/title>/gs)];
-    const title = titles.at(-1)?.[1] ?? '';
-    expect(title.length).toBeLessThan(150);
-    expect(title).toContain('…');
+    expect(xml).toMatch(/<title>Monitor &lt;A&gt; &amp; &quot;B&quot; - Changed<\/title>/);
   });
 
   it('omits the Selection label from the description when only one Selection changed', async () => {
@@ -425,13 +311,8 @@ describe('RSS XML escaping and validity', () => {
     });
 
     const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
-    // The channel itself also has a <description>, so take the item's (the last match).
-    const descriptions = [...xml.matchAll(/<description>(.*?)<\/description>/gs)];
-    const description = descriptions.at(-1)?.[1] ?? '';
-    expect(description).toContain('<br/>');
-    expect(description).not.toMatch(/Item 1[^<]*Item 2/);
-    // The title is intentionally flattened to one line regardless.
-    expect(xml).toMatch(/<title>Multiline Monitor: \[A → Item 1 Item 2 Item 3\]<\/title>/);
+    expect(xml).toContain('<br/>');
+    expect(xml).not.toMatch(/Item 1[^<]*Item 2/);
   });
 
   it("renders a Selection's captured images as <img> tags linked to the source page", async () => {
