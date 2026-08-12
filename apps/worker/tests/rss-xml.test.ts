@@ -389,4 +389,122 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).toContain('<ttl>60</ttl>');
     expect(xml).toContain('<sy:updatePeriod>hourly</sy:updatePeriod>');
   });
+
+  it("titles a list-mode change using the newly added item's leading date and headline", async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'News Feed', slug: 'news-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'News Monitor',
+        url: 'https://example.com/news',
+        selections: [
+          { label: '項目', selectorType: 'css', selector: '.item', extractionMode: 'list' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r1',
+        values: [
+          {
+            selectionId,
+            label: '項目',
+            displayValue: ['2024-01-10古いお知らせ'],
+            comparisonValue: ['2024-01-10古いお知らせ'],
+          },
+        ],
+      }),
+    });
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r2',
+        values: [
+          {
+            selectionId,
+            label: '項目',
+            displayValue: ['2024-01-15新商品のお知らせ', '2024-01-10古いお知らせ'],
+            comparisonValue: ['2024-01-15新商品のお知らせ', '2024-01-10古いお知らせ'],
+          },
+        ],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('<title>News Monitor: 2024-01-15 新商品のお知らせ</title>');
+  });
+
+  it('falls back to the plain Monitor-name title when an added list item has no leading date', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'No Date Feed', slug: 'no-date-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'No Date Monitor',
+        url: 'https://example.com/no-date',
+        selections: [
+          { label: '項目', selectorType: 'css', selector: '.item', extractionMode: 'list' },
+        ],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r1',
+        values: [{ selectionId, label: '項目', displayValue: ['A'], comparisonValue: ['A'] }],
+      }),
+    });
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r2',
+        values: [
+          { selectionId, label: '項目', displayValue: ['A', 'B'], comparisonValue: ['A', 'B'] },
+        ],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('<title>No Date Monitor - Changed</title>');
+  });
 });

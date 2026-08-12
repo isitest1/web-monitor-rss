@@ -13,6 +13,12 @@ a version number.
 
 ### Added
 
+- RSS item titles for a list-mode Selection gaining a new entry (e.g. a
+  news/blog listing) now use that entry's own leading date and headline —
+  e.g. "Monitor Name: 2024-01-15 Headline" — instead of a generic "Changed",
+  when a leading date can be recognized. Single-value Selections are
+  unaffected and keep the plain "Monitor Name - Changed" title; list items
+  without a recognizable leading date also fall back to it.
 - `text`-mode Selections now automatically capture absolute URLs of any
   `<img>` elements within the selected range (up to 5, deduplicated) and
   render them, linked back to the source page, in the RSS description and

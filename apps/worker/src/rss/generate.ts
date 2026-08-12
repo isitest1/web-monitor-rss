@@ -39,12 +39,49 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   SYSTEM_RECOVERY: 'System Recovery',
 };
 
+// A repeating-list item's date is usually the leading chunk, originally
+// set apart from the title by its own tag in the source markup — already
+// flattened away by extraction, so this matches a leading date directly in
+// the flattened display text instead (works whether or not a separating
+// space survived the flattening).
+const LEADING_DATE_PATTERN =
+  /^\s*(\d{4}[-/.年]\s?\d{1,2}[-/.月]\s?\d{1,2}日?(?:\([月火水木金土日]\))?)\s*[:：\-–—]?\s*/;
+
+/**
+ * For a list-mode Selection with newly added items, splits the first added
+ * item's text into "date title" for the RSS title, e.g. a news/blog list
+ * gaining an entry surfaces its own date and headline instead of a generic
+ * "Changed". Returns null (falling back to the plain Monitor-name title)
+ * when nothing starts with a recognizable date.
+ */
+function firstAddedListItemTitle(change: Change): string | null {
+  for (const newValue of change.newValue ?? []) {
+    if (!Array.isArray(newValue.displayValue)) continue;
+    const oldValue = change.oldValue?.find((v) => v.selectionId === newValue.selectionId);
+    const { added } = diffArrayValues(
+      Array.isArray(oldValue?.displayValue) ? oldValue.displayValue : undefined,
+      newValue.displayValue,
+    );
+    const first = added[0];
+    if (!first) continue;
+    const match = LEADING_DATE_PATTERN.exec(first);
+    if (!match) continue;
+    const date = match[1];
+    const title = first.slice(match[0].length).trim();
+    if (!title) continue;
+    return `${date} ${title}`;
+  }
+  return null;
+}
+
 function buildTitle(change: Change, monitorName: string | undefined): string {
   const label = CHANGE_TYPE_LABELS[change.changeType];
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
     return label;
   }
-  return `${monitorName ?? 'Monitor'} - ${label}`;
+  const name = monitorName ?? 'Monitor';
+  const listItemTitle = firstAddedListItemTitle(change);
+  return listItemTitle ? `${name}: ${listItemTitle}` : `${name} - ${label}`;
 }
 
 /**
