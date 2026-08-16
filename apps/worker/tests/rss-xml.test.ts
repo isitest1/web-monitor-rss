@@ -81,6 +81,57 @@ describe('RSS XML escaping and validity', () => {
     expect(xml).toMatch(/<title>Monitor &lt;A&gt; &amp; &quot;B&quot; - Changed<\/title>/);
   });
 
+  it('wraps description and content:encoded in CDATA so readers get real HTML, not entities', async () => {
+    const admin = await loginAsAdmin(env);
+    const feedRes = await admin.request('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'CDATA Feed', slug: 'cdata-feed', kind: 'content' }),
+    });
+    const feed = await feedRes.json<FeedWithPlaintextToken>();
+
+    const monitorRes = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        feedId: feed.id,
+        name: 'CDATA Monitor',
+        url: 'https://example.com/cdata',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    const monitor = await monitorRes.json<MonitorWithSelections>();
+    const selectionId = monitor.selections[0]!.id;
+
+    const base = {
+      monitorId: monitor.id,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      status: 'SUCCESS' as const,
+      durationMs: 100,
+      httpStatus: 200,
+    };
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r1',
+        values: [{ selectionId, label: '値', displayValue: 'A', comparisonValue: 'A' }],
+      }),
+    });
+    await runnerRequest('/api/runner/results', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        runId: 'r2',
+        values: [{ selectionId, label: '値', displayValue: 'B', comparisonValue: 'B' }],
+      }),
+    });
+
+    const xml = await (await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env)).text();
+    expect(xml).toContain('xmlns:content="http://purl.org/rss/1.0/modules/content/"');
+    expect(xml).toMatch(/<description><!\[CDATA\[[^]*?\]\]><\/description>/);
+    expect(xml).toMatch(/<content:encoded><!\[CDATA\[[^]*?\]\]><\/content:encoded>/);
+  });
+
   it('omits the Selection label from the description when only one Selection changed', async () => {
     const admin = await loginAsAdmin(env);
     const feedRes = await admin.request('/api/feeds', {

@@ -11,7 +11,7 @@ import {
   getMinCheckIntervalSecForFeed,
   getMonitorNamesByIds,
 } from '../db/repositories/monitors.js';
-import { escapeXml, escapeXmlMultiline, toRfc822 } from './xml.js';
+import { escapeXml, escapeXmlMultiline, toRfc822, wrapCData } from './xml.js';
 
 // The Worker cron watchdog (§8.6) runs hourly regardless of any Monitor's
 // own interval, so that is the honest cadence to advertise for a system
@@ -213,13 +213,15 @@ export async function generateFeedRss(
       );
       const link = change.sourceUrl ?? channelLink;
       const description = buildDescription(change, link);
+      const descriptionCData = wrapCData(description);
       return [
         '    <item>',
         `      <title>${escapeXml(title)}</title>`,
         `      <link>${escapeXml(link)}</link>`,
         `      <guid isPermaLink="false">${escapeXml(change.guid)}</guid>`,
         `      <pubDate>${toRfc822(change.detectedAt)}</pubDate>`,
-        `      <description>${description}</description>`,
+        `      <description>${descriptionCData}</description>`,
+        `      <content:encoded>${descriptionCData}</content:encoded>`,
         '    </item>',
       ].join('\n');
     })
@@ -227,7 +229,7 @@ export async function generateFeedRss(
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<rss version="2.0" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/">',
+    '<rss version="2.0" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" xmlns:content="http://purl.org/rss/1.0/modules/content/">',
     '  <channel>',
     `    <title>${escapeXml(feed.name)}</title>`,
     `    <link>${escapeXml(channelLink)}</link>`,

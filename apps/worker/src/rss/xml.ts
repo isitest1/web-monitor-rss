@@ -18,6 +18,17 @@ export function escapeXmlMultiline(value: string): string {
   return escapeXml(value).replace(/\n/g, '<br/>');
 }
 
+/**
+ * Wraps HTML in a CDATA section so RSS readers get real markup instead of
+ * entity references — the `<description>`/`<content:encoded>` convention
+ * most feed readers expect. `]]>` can't appear inside CDATA, so any
+ * occurrence is split across adjacent CDATA sections, which XML parsers
+ * concatenate back into one text node.
+ */
+export function wrapCData(html: string): string {
+  return `<![CDATA[${html.replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
+}
+
 export function toRfc822(iso: string): string {
   return new Date(iso).toUTCString().replace('GMT', '+0000');
 }
