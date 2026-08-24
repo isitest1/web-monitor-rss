@@ -4342,7 +4342,12 @@
     // range (§7.4) — display-only, never part of change comparison/hashing
     // (see computeResultHash), so images changing alone never triggers a
     // content change or notification.
-    images: external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION).optional()
+    images: external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION).optional(),
+    // 'list'-mode counterpart of `images`: one entry per displayValue/
+    // comparisonValue item, holding that item's own captured <img> URLs
+    // (possibly empty). Same display-only rule as `images` — never part of
+    // comparison/hashing.
+    itemImages: external_exports.array(external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION)).optional()
   });
   var monitorStateSchema = external_exports.object({
     monitorId: external_exports.string(),
@@ -4552,11 +4557,14 @@
     if (selection.extractionMode === "list") {
       const rawValues = matches.map((element2) => extractListItem(element2));
       const normalized2 = rawValues.map((raw2) => normalizeValue(raw2, selection.normalization));
+      const itemImages = matches.map((element2) => extractImagesWithin(element2));
+      const hasImages = itemImages.some((urls) => urls.length > 0);
       return {
         selectionId: selection.id,
         label: selection.label,
         displayValue: normalized2.map((n) => n.displayValue),
-        comparisonValue: normalized2.map((n) => n.comparisonValue)
+        comparisonValue: normalized2.map((n) => n.comparisonValue),
+        ...hasImages ? { itemImages } : {}
       };
     }
     if (matches.length > 1) {

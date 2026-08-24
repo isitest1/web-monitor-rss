@@ -4275,7 +4275,12 @@
     // range (§7.4) — display-only, never part of change comparison/hashing
     // (see computeResultHash), so images changing alone never triggers a
     // content change or notification.
-    images: external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION).optional()
+    images: external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION).optional(),
+    // 'list'-mode counterpart of `images`: one entry per displayValue/
+    // comparisonValue item, holding that item's own captured <img> URLs
+    // (possibly empty). Same display-only rule as `images` — never part of
+    // comparison/hashing.
+    itemImages: external_exports.array(external_exports.array(external_exports.string()).max(MAX_IMAGES_PER_SELECTION)).optional()
   });
   var monitorStateSchema = external_exports.object({
     monitorId: external_exports.string(),

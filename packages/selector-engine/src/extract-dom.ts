@@ -90,9 +90,10 @@ function extractOne(element: Element, selection: Selection): string {
 }
 
 /**
- * Absolute URLs of <img> descendants within a 'text'-mode Selection's
- * range, capped and deduplicated — display-only enrichment, never part of
- * the comparison value (§7.4).
+ * Absolute URLs of <img> descendants within an element's range, capped and
+ * deduplicated — display-only enrichment, never part of the comparison
+ * value (§7.4). Used for a 'text'-mode Selection's own range, and per-item
+ * for a 'list'-mode Selection's repeating elements.
  */
 function extractImagesWithin(element: Element): string[] {
   const urls: string[] = [];
@@ -127,11 +128,14 @@ export async function extractSelectionFromDom(
   if (selection.extractionMode === 'list') {
     const rawValues = matches.map((element) => extractListItem(element));
     const normalized = rawValues.map((raw) => normalizeValue(raw, selection.normalization));
+    const itemImages = matches.map((element) => extractImagesWithin(element));
+    const hasImages = itemImages.some((urls) => urls.length > 0);
     return {
       selectionId: selection.id,
       label: selection.label,
       displayValue: normalized.map((n) => n.displayValue),
       comparisonValue: normalized.map((n) => n.comparisonValue),
+      ...(hasImages ? { itemImages } : {}),
     };
   }
 

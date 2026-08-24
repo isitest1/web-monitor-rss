@@ -100,6 +100,35 @@ function imageTags(images: string[] | undefined, link: string): string {
     .join('');
 }
 
+/**
+ * For a list-mode Selection, collects the captured images (§7.4) belonging
+ * to newly added entries — the 'text'-mode equivalent already has a single
+ * flat `images` list, but a list-mode Selection's images are captured per
+ * item (`itemImages`), so this pairs each added display string back to its
+ * item's images by position, skipping an index already claimed by an
+ * earlier match so duplicate display strings don't all resolve to the same
+ * item.
+ */
+function addedListItemImages(
+  oldDisplay: string[] | undefined,
+  newDisplay: string[],
+  itemImages: string[][] | undefined,
+): string[] {
+  if (!itemImages) return [];
+  const { added } = diffArrayValues(oldDisplay, newDisplay);
+  const usedIndices = new Set<number>();
+  const images: string[] = [];
+  for (const item of added) {
+    const idx = newDisplay.findIndex((v, i) => v === item && !usedIndices.has(i));
+    if (idx === -1) continue;
+    usedIndices.add(idx);
+    for (const url of itemImages[idx] ?? []) {
+      if (!images.includes(url)) images.push(url);
+    }
+  }
+  return images;
+}
+
 /** Returns HTML already safe to drop directly into <description> — text is escaped internally, so callers must not escape it again. */
 function buildDescription(change: Change, link: string): string {
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
@@ -123,7 +152,14 @@ function buildDescription(change: Change, link: string): string {
       newValue?.displayValue,
       ids.length > 1,
     );
-    return escapeXmlMultiline(line) + imageTags(newValue?.images, link);
+    const images = Array.isArray(newValue?.displayValue)
+      ? addedListItemImages(
+          Array.isArray(oldValue?.displayValue) ? oldValue.displayValue : undefined,
+          newValue.displayValue,
+          newValue.itemImages,
+        )
+      : newValue?.images;
+    return escapeXmlMultiline(line) + imageTags(images, link);
   });
   return lines.join('<br/>');
 }

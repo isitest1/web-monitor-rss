@@ -116,6 +116,32 @@ test('extracts a repeating list in order', async ({ page }) => {
   expect(value.displayValue).toEqual(['項目A', '項目B', '項目C']);
 });
 
+test("captures each list item's own <img> descendants as itemImages", async ({ page }) => {
+  const value = await page.evaluate(
+    async (selection) => {
+      return window.SelectorEngine.extractSelectionFromDom(selection as never);
+    },
+    baseSelection({ selector: '#photo-list .photo-item', extractionMode: 'list' }),
+  );
+  expect(value.itemImages).toEqual([
+    ['http://localhost:4173/images/entry-1.jpg'],
+    [],
+    ['http://localhost:4173/images/entry-3a.jpg', 'http://localhost:4173/images/entry-3b.jpg'],
+  ]);
+  // Images are display-only and must never affect the comparison value.
+  expect(JSON.stringify(value.comparisonValue)).not.toContain('entry-1.jpg');
+});
+
+test('does not attach itemImages for a list selection with no images at all', async ({ page }) => {
+  const value = await page.evaluate(
+    async (selection) => {
+      return window.SelectorEngine.extractSelectionFromDom(selection as never);
+    },
+    baseSelection({ selector: '#item-list .item', extractionMode: 'list' }),
+  );
+  expect(value.itemImages).toBeUndefined();
+});
+
 test('throws SELECTOR_NOT_FOUND when nothing matches', async ({ page }) => {
   const error = await page.evaluate(
     async (selection) => {

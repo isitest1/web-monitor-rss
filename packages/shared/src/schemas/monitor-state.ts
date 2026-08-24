@@ -14,6 +14,11 @@ export const extractedSelectionValueSchema = z.object({
   // (see computeResultHash), so images changing alone never triggers a
   // content change or notification.
   images: z.array(z.string()).max(MAX_IMAGES_PER_SELECTION).optional(),
+  // 'list'-mode counterpart of `images`: one entry per displayValue/
+  // comparisonValue item, holding that item's own captured <img> URLs
+  // (possibly empty). Same display-only rule as `images` — never part of
+  // comparison/hashing.
+  itemImages: z.array(z.array(z.string()).max(MAX_IMAGES_PER_SELECTION)).optional(),
 });
 export type ExtractedSelectionValue = z.infer<typeof extractedSelectionValueSchema>;
 

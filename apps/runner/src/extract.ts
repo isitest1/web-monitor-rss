@@ -74,10 +74,11 @@ async function extractOne(
 }
 
 /**
- * Absolute URLs of <img> descendants within a 'text'-mode Selection's
- * range, capped and deduplicated — mirrors extractImagesWithin in
+ * Absolute URLs of <img> descendants within a locator's range, capped and
+ * deduplicated — mirrors extractImagesWithin in
  * packages/selector-engine/src/extract-dom.ts so both extraction paths
- * agree (§7.4).
+ * agree (§7.4). Used for a 'text'-mode Selection's own range, and per-item
+ * for a 'list'-mode Selection's repeating elements.
  */
 async function extractImagesWithin(locator: Locator, pageUrl: string): Promise<string[]> {
   const imgs = await locator.locator('img').all();
@@ -116,11 +117,16 @@ export async function extractSelection(
     const items = await locator.all();
     const rawValues = await Promise.all(items.map((item) => extractListItem(item)));
     const normalized = rawValues.map((raw) => normalizeValue(raw, selection.normalization));
+    const itemImages = await Promise.all(
+      items.map((item) => extractImagesWithin(item, page.url())),
+    );
+    const hasImages = itemImages.some((urls) => urls.length > 0);
     return {
       selectionId: selection.id,
       label: selection.label,
       displayValue: normalized.map((n) => n.displayValue),
       comparisonValue: normalized.map((n) => n.comparisonValue),
+      ...(hasImages ? { itemImages } : {}),
     };
   }
 

@@ -66,6 +66,27 @@ function imageTags(images: string[] | undefined, link: string): string {
     .join('');
 }
 
+/** Mirrors apps/worker/src/rss/generate.ts's addedListItemImages: pairs a list-mode Selection's newly added display strings back to their per-item captured images. */
+function addedListItemImages(
+  oldDisplay: string[] | undefined,
+  newDisplay: string[],
+  itemImages: string[][] | undefined,
+): string[] {
+  if (!itemImages) return [];
+  const { added } = diffArrayValues(oldDisplay, newDisplay);
+  const usedIndices = new Set<number>();
+  const images: string[] = [];
+  for (const item of added) {
+    const idx = newDisplay.findIndex((v, i) => v === item && !usedIndices.has(i));
+    if (idx === -1) continue;
+    usedIndices.add(idx);
+    for (const url of itemImages[idx] ?? []) {
+      if (!images.includes(url)) images.push(url);
+    }
+  }
+  return images;
+}
+
 export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: Change[]): string {
   const body = `
 <p><a href="/monitors">&larr; Back to Watchlist</a></p>
@@ -87,10 +108,17 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                 const oldVal = change.oldValue?.find((v) => v.selectionId === id);
                 const newVal = change.newValue?.find((v) => v.selectionId === id);
                 const label = newVal?.label ?? oldVal?.label ?? '';
+                const images = Array.isArray(newVal?.displayValue)
+                  ? addedListItemImages(
+                      Array.isArray(oldVal?.displayValue) ? oldVal.displayValue : undefined,
+                      newVal.displayValue,
+                      newVal.itemImages,
+                    )
+                  : newVal?.images;
                 return (
                   escapeHtmlMultiline(
                     formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
-                  ) + imageTags(newVal?.images, monitor.url)
+                  ) + imageTags(images, monitor.url)
                 );
               })
               .join('<br/>')}</td>
