@@ -2,6 +2,7 @@ import {
   diffArrayValues,
   diffScalarText,
   type Change,
+  type ChangeDisplayMode,
   type Check,
   type Monitor,
 } from '@web-monitor/shared';
@@ -36,22 +37,30 @@ function formatChangeLine(
   label: string,
   oldValue: string | string[] | undefined,
   newValue: string | string[] | undefined,
+  mode: ChangeDisplayMode,
 ): string {
   if (Array.isArray(newValue)) {
     const { added, removed } = diffArrayValues(
       Array.isArray(oldValue) ? oldValue : undefined,
       newValue,
     );
-    const parts: string[] = [];
-    if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
-    if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
-    const diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
+    let diffText: string;
+    if (mode === 'new_only') {
+      diffText = added.length > 0 ? added.join('\n') : '(no new items)';
+    } else {
+      const parts: string[] = [];
+      if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
+      if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
+      diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
+    }
     return `${label}: ${diffText}`;
   }
   const diffText =
-    typeof oldValue === 'string' && typeof newValue === 'string'
-      ? formatScalarDiff(oldValue, newValue)
-      : `${formatValue(oldValue)} → ${formatValue(newValue)}`;
+    mode === 'new_only'
+      ? formatValue(newValue)
+      : typeof oldValue === 'string' && typeof newValue === 'string'
+        ? formatScalarDiff(oldValue, newValue)
+        : `${formatValue(oldValue)} → ${formatValue(newValue)}`;
   return `${label}: ${diffText}`;
 }
 
@@ -117,7 +126,12 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                   : newVal?.images;
                 return (
                   escapeHtmlMultiline(
-                    formatChangeLine(label, oldVal?.displayValue, newVal?.displayValue),
+                    formatChangeLine(
+                      label,
+                      oldVal?.displayValue,
+                      newVal?.displayValue,
+                      monitor.changeDisplayMode,
+                    ),
                   ) + imageTags(images, monitor.url)
                 );
               })

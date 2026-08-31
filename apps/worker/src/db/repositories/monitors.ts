@@ -1,4 +1,10 @@
-import type { ComparisonRule, ExecutionMode, Monitor, MonitorMode } from '@web-monitor/shared';
+import type {
+  ChangeDisplayMode,
+  ComparisonRule,
+  ExecutionMode,
+  Monitor,
+  MonitorMode,
+} from '@web-monitor/shared';
 
 interface MonitorRow {
   id: string;
@@ -10,6 +16,7 @@ interface MonitorRow {
   execution_mode: string;
   check_interval_sec: number;
   group_name: string | null;
+  change_display_mode: string;
   enabled: number;
   order_index: number;
   created_at: string;
@@ -27,6 +34,7 @@ function mapRow(row: MonitorRow): Monitor {
     executionMode: row.execution_mode as ExecutionMode,
     checkIntervalSec: row.check_interval_sec,
     groupName: row.group_name,
+    changeDisplayMode: row.change_display_mode as ChangeDisplayMode,
     enabled: row.enabled === 1,
     orderIndex: row.order_index,
     createdAt: row.created_at,
@@ -44,6 +52,7 @@ export interface InsertMonitorInput {
   executionMode: ExecutionMode;
   checkIntervalSec: number;
   groupName: string | null;
+  changeDisplayMode: ChangeDisplayMode;
   enabled: boolean;
   orderIndex: number;
   createdAt: string;
@@ -55,8 +64,8 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
     .prepare(
       `INSERT INTO monitors (
         id, feed_id, name, url, monitor_mode, comparison_rule, execution_mode,
-        check_interval_sec, group_name, enabled, order_index, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        check_interval_sec, group_name, change_display_mode, enabled, order_index, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       input.id,
@@ -68,6 +77,7 @@ export async function insertMonitor(db: D1Database, input: InsertMonitorInput): 
       input.executionMode,
       input.checkIntervalSec,
       input.groupName,
+      input.changeDisplayMode,
       input.enabled ? 1 : 0,
       input.orderIndex,
       input.createdAt,
@@ -127,6 +137,7 @@ export interface UpdateMonitorInput {
   executionMode?: ExecutionMode | undefined;
   checkIntervalSec?: number | undefined;
   groupName?: string | null | undefined;
+  changeDisplayMode?: ChangeDisplayMode | undefined;
   enabled?: boolean | undefined;
   orderIndex?: number | undefined;
 }
@@ -144,7 +155,8 @@ export async function updateMonitor(
     .prepare(
       `UPDATE monitors
        SET feed_id = ?, name = ?, url = ?, monitor_mode = ?, comparison_rule = ?,
-           execution_mode = ?, check_interval_sec = ?, group_name = ?, enabled = ?, order_index = ?, updated_at = ?
+           execution_mode = ?, check_interval_sec = ?, group_name = ?, change_display_mode = ?,
+           enabled = ?, order_index = ?, updated_at = ?
        WHERE id = ?`,
     )
     .bind(
@@ -156,6 +168,7 @@ export async function updateMonitor(
       merged.executionMode,
       merged.checkIntervalSec,
       merged.groupName,
+      merged.changeDisplayMode,
       merged.enabled ? 1 : 0,
       merged.orderIndex,
       updatedAt,
@@ -178,19 +191,30 @@ export async function setMonitorEnabled(
   return getMonitorById(db, id);
 }
 
-export async function getMonitorNamesByIds(
+export interface MonitorRssInfo {
+  name: string;
+  changeDisplayMode: ChangeDisplayMode;
+}
+
+/** Per-Monitor RSS-generation inputs (§11): the display name and the change-display-mode used to render descriptions. */
+export async function getMonitorRssInfoByIds(
   db: D1Database,
   ids: string[],
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+): Promise<Map<string, MonitorRssInfo>> {
+  const map = new Map<string, MonitorRssInfo>();
   const uniqueIds = [...new Set(ids)];
   if (uniqueIds.length === 0) return map;
   const placeholders = uniqueIds.map(() => '?').join(', ');
   const { results } = await db
-    .prepare(`SELECT id, name, url FROM monitors WHERE id IN (${placeholders})`)
+    .prepare(`SELECT id, name, change_display_mode FROM monitors WHERE id IN (${placeholders})`)
     .bind(...uniqueIds)
-    .all<{ id: string; name: string; url: string }>();
-  for (const row of results) map.set(row.id, row.name);
+    .all<{ id: string; name: string; change_display_mode: string }>();
+  for (const row of results) {
+    map.set(row.id, {
+      name: row.name,
+      changeDisplayMode: row.change_display_mode as ChangeDisplayMode,
+    });
+  }
   return map;
 }
 

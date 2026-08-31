@@ -4442,6 +4442,7 @@
   var monitorModeSchema = external_exports.enum(["single", "list"]);
   var comparisonRuleSchema = external_exports.enum(["normalized_equality"]);
   var executionModeSchema = external_exports.enum(["server", "local"]);
+  var changeDisplayModeSchema = external_exports.enum(["both", "new_only"]);
   var MIN_CHECK_INTERVAL_SEC = 3600;
   var DEFAULT_CHECK_INTERVAL_SEC = 86400;
   var checkIntervalSecSchema = external_exports.number().int().min(MIN_CHECK_INTERVAL_SEC).max(604800);
@@ -4465,6 +4466,7 @@
     executionMode: executionModeSchema,
     checkIntervalSec: external_exports.number().int().positive(),
     groupName: external_exports.string().nullable(),
+    changeDisplayMode: changeDisplayModeSchema,
     enabled: external_exports.boolean(),
     orderIndex: external_exports.number().int().nonnegative(),
     createdAt: external_exports.string(),
@@ -4484,6 +4486,7 @@
     executionMode: executionModeSchema.default("server"),
     checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
     groupName: groupNameSchema.default(null),
+    changeDisplayMode: changeDisplayModeSchema.default("both"),
     enabled: external_exports.boolean().default(true),
     orderIndex: external_exports.number().int().nonnegative().default(0),
     selections: external_exports.array(selectionInputSchema).min(1).max(50)
@@ -4497,6 +4500,7 @@
     executionMode: executionModeSchema.optional(),
     checkIntervalSec: checkIntervalSecSchema.optional(),
     groupName: groupNameSchema.optional(),
+    changeDisplayMode: changeDisplayModeSchema.optional(),
     enabled: external_exports.boolean().optional(),
     orderIndex: external_exports.number().int().nonnegative().optional(),
     selections: external_exports.array(selectionInputSchema).min(1).max(50).optional()
@@ -4858,6 +4862,25 @@
     );
     modeLabel.appendChild(modeSelect);
     panel.appendChild(modeLabel);
+    const changeDisplayLabel = document.createElement("label");
+    changeDisplayLabel.textContent = "RSS change display";
+    const changeDisplaySelect = document.createElement("select");
+    for (const [value, text] of [
+      ["both", "Show old + new (Added/Removed)"],
+      ["new_only", "Show new value only"]
+    ]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      if (value === state.changeDisplayMode) option.selected = true;
+      changeDisplaySelect.appendChild(option);
+    }
+    changeDisplaySelect.addEventListener(
+      "change",
+      () => callbacks.onChangeDisplayModeChange(changeDisplaySelect.value)
+    );
+    changeDisplayLabel.appendChild(changeDisplaySelect);
+    panel.appendChild(changeDisplayLabel);
     const hint = document.createElement("p");
     hint.className = "hint";
     hint.textContent = state.reselectTargetId ? "Click the element on the page to use as a replacement." : "Click an element or press Enter to add it to the selection. Use the arrow keys to move to a parent/child/sibling element, Delete to remove a selection, Escape to finish. A dedicated RSS Feed is created automatically when you save.";
@@ -4978,6 +5001,7 @@
     monitorMode = "single";
     monitorName = document.title.slice(0, 200);
     groupName = null;
+    changeDisplayMode = "both";
     statusMessage = "";
     saving = false;
     active = false;
@@ -4995,6 +5019,7 @@
         this.monitorMode = existing.monitorMode;
         this.monitorName = existing.monitorName;
         this.groupName = existing.groupName;
+        this.changeDisplayMode = existing.changeDisplayMode;
         this.selections = existing.selections;
       }
       this.overlay = createOverlayRoot();
@@ -5172,6 +5197,7 @@
         monitorName: this.monitorName,
         monitorMode: this.monitorMode,
         groupName: this.groupName,
+        changeDisplayMode: this.changeDisplayMode,
         selections: this.selections,
         statusMessage: this.statusMessage,
         saving: this.saving,
@@ -5188,6 +5214,9 @@
         onMonitorModeChange: (mode) => {
           this.monitorMode = mode;
           this.renderPanel();
+        },
+        onChangeDisplayModeChange: (mode) => {
+          this.changeDisplayMode = mode;
         },
         onLabelChange: (id, label) => {
           const selection = this.selections.find((s) => s.id === id);
@@ -5240,6 +5269,7 @@
           url: location.href,
           monitorMode: this.monitorMode,
           groupName: this.groupName,
+          changeDisplayMode: this.changeDisplayMode,
           selections: selectionInputs
         }
       }) : await sendExtensionMessage({
@@ -5252,6 +5282,7 @@
           executionMode: "server",
           checkIntervalSec: 86400,
           groupName: this.groupName,
+          changeDisplayMode: this.changeDisplayMode,
           enabled: true,
           orderIndex: 0,
           selections: selectionInputs
@@ -5345,6 +5376,7 @@
       monitorMode: monitor.monitorMode,
       monitorName: monitor.name,
       groupName: monitor.groupName,
+      changeDisplayMode: monitor.changeDisplayMode,
       selections: monitor.selections.map((selection) => resolveDraftFromSelection(selection))
     });
   }

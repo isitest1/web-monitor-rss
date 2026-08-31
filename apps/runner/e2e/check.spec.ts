@@ -16,6 +16,7 @@ function buildMonitor(url: string, selector: string): MonitorWithSelections {
     executionMode: 'server',
     checkIntervalSec: 86400,
     groupName: null,
+    changeDisplayMode: 'both',
     enabled: true,
     orderIndex: 0,
     createdAt: '2025-01-01T00:00:00.000Z',

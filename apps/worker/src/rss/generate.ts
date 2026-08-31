@@ -3,13 +3,15 @@ import {
   diffScalarText,
   DEFAULT_CHECK_INTERVAL_SEC,
   type Change,
+  type ChangeDisplayMode,
   type ChangeType,
   type Feed,
 } from '@web-monitor/shared';
 import { listChangesByFeed } from '../db/repositories/changes.js';
 import {
   getMinCheckIntervalSecForFeed,
-  getMonitorNamesByIds,
+  getMonitorRssInfoByIds,
+  type MonitorRssInfo,
 } from '../db/repositories/monitors.js';
 import { escapeXml, escapeXmlMultiline, toRfc822, wrapCData } from './xml.js';
 
@@ -39,49 +41,18 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   SYSTEM_RECOVERY: 'System Recovery',
 };
 
-// A repeating-list item's date is usually the leading chunk, originally
-// set apart from the title by its own tag in the source markup — already
-// flattened away by extraction, so this matches a leading date directly in
-// the flattened display text instead (works whether or not a separating
-// space survived the flattening).
-const LEADING_DATE_PATTERN =
-  /^\s*(\d{4}[-/.年]\s?\d{1,2}[-/.月]\s?\d{1,2}日?(?:\([月火水木金土日]\))?)\s*[:：\-–—]?\s*/;
-
 /**
- * For a list-mode Selection with newly added items, splits the first added
- * item's text into "date title" for the RSS title, e.g. a news/blog list
- * gaining an entry surfaces its own date and headline instead of a generic
- * "Changed". Returns null (falling back to the plain Monitor-name title)
- * when nothing starts with a recognizable date.
+ * The item title is just the monitored page's title (the Monitor's name,
+ * which defaults to document.title when the Monitor is created) — never
+ * content derived, since a headline or diff excerpt can run long enough to
+ * make some RSS readers choke. System events aren't tied to a page, so they
+ * keep their own short label instead.
  */
-function firstAddedListItemTitle(change: Change): string | null {
-  for (const newValue of change.newValue ?? []) {
-    if (!Array.isArray(newValue.displayValue)) continue;
-    const oldValue = change.oldValue?.find((v) => v.selectionId === newValue.selectionId);
-    const { added } = diffArrayValues(
-      Array.isArray(oldValue?.displayValue) ? oldValue.displayValue : undefined,
-      newValue.displayValue,
-    );
-    const first = added[0];
-    if (!first) continue;
-    const match = LEADING_DATE_PATTERN.exec(first);
-    if (!match) continue;
-    const date = match[1];
-    const title = first.slice(match[0].length).trim();
-    if (!title) continue;
-    return `${date} ${title}`;
-  }
-  return null;
-}
-
 function buildTitle(change: Change, monitorName: string | undefined): string {
-  const label = CHANGE_TYPE_LABELS[change.changeType];
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
-    return label;
+    return CHANGE_TYPE_LABELS[change.changeType];
   }
-  const name = monitorName ?? 'Monitor';
-  const listItemTitle = firstAddedListItemTitle(change);
-  return listItemTitle ? `${name}: ${listItemTitle}` : `${name} - ${label}`;
+  return monitorName ?? 'Monitor';
 }
 
 /**
@@ -130,7 +101,7 @@ function addedListItemImages(
 }
 
 /** Returns HTML already safe to drop directly into <description> — text is escaped internally, so callers must not escape it again. */
-function buildDescription(change: Change, link: string): string {
+function buildDescription(change: Change, link: string, mode: ChangeDisplayMode): string {
   if (change.changeType === 'SYSTEM_ALERT' || change.changeType === 'SYSTEM_RECOVERY') {
     const detail = change.newValue?.[0]?.displayValue;
     return typeof detail === 'string' ? escapeXmlMultiline(detail) : '';
@@ -151,6 +122,7 @@ function buildDescription(change: Change, link: string): string {
       oldValue?.displayValue,
       newValue?.displayValue,
       ids.length > 1,
+      mode,
     );
     const images = Array.isArray(newValue?.displayValue)
       ? addedListItemImages(
@@ -192,29 +164,39 @@ function formatScalarDiff(oldValue: string, newValue: string): string {
  * removed instead of the whole before/after list; for a scalar Selection,
  * shows just the edited portion in context (§ Feature: 差分表示改善) —
  * both avoid dumping the whole before/after value for a change that only
- * touched a small part of it.
+ * touched a small part of it. In 'new_only' mode (per-Monitor setting), the
+ * removed/old side is dropped entirely: list-mode shows just the added
+ * items with no "Added:" prefix, and scalar-mode shows just the new value.
  */
 function formatChangeLine(
   label: string,
   oldValue: string | string[] | undefined,
   newValue: string | string[] | undefined,
   showLabel: boolean,
+  mode: ChangeDisplayMode,
 ): string {
   if (Array.isArray(newValue)) {
     const { added, removed } = diffArrayValues(
       Array.isArray(oldValue) ? oldValue : undefined,
       newValue,
     );
-    const parts: string[] = [];
-    if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
-    if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
-    const diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
+    let diffText: string;
+    if (mode === 'new_only') {
+      diffText = added.length > 0 ? added.join('\n') : '(no new items)';
+    } else {
+      const parts: string[] = [];
+      if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
+      if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
+      diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
+    }
     return showLabel ? `${label}: ${diffText}` : diffText;
   }
   const diffText =
-    typeof oldValue === 'string' && typeof newValue === 'string'
-      ? formatScalarDiff(oldValue, newValue)
-      : `${formatDisplay(oldValue)} → ${formatDisplay(newValue)}`;
+    mode === 'new_only'
+      ? formatDisplay(newValue)
+      : typeof oldValue === 'string' && typeof newValue === 'string'
+        ? formatScalarDiff(oldValue, newValue)
+        : `${formatDisplay(oldValue)} → ${formatDisplay(newValue)}`;
   return showLabel ? `${label}: ${diffText}` : diffText;
 }
 
@@ -230,7 +212,7 @@ export async function generateFeedRss(
 ): Promise<RssGenerationResult> {
   const changes = await listChangesByFeed(db, feed.id, ITEM_LIMIT);
   const monitorIds = changes.map((c) => c.monitorId).filter((id): id is string => id !== null);
-  const monitorNames = await getMonitorNamesByIds(db, monitorIds);
+  const monitorInfo = await getMonitorRssInfoByIds(db, monitorIds);
 
   const lastBuildDate = changes[0]?.detectedAt ?? feed.updatedAt;
 
@@ -243,12 +225,12 @@ export async function generateFeedRss(
 
   const items = changes
     .map((change) => {
-      const title = buildTitle(
-        change,
-        change.monitorId ? monitorNames.get(change.monitorId) : undefined,
-      );
+      const info: MonitorRssInfo | undefined = change.monitorId
+        ? monitorInfo.get(change.monitorId)
+        : undefined;
+      const title = buildTitle(change, info?.name);
       const link = change.sourceUrl ?? channelLink;
-      const description = buildDescription(change, link);
+      const description = buildDescription(change, link, info?.changeDisplayMode ?? 'both');
       const descriptionCData = wrapCData(description);
       return [
         '    <item>',

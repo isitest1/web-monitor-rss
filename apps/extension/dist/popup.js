@@ -4204,6 +4204,7 @@
   var monitorModeSchema = external_exports.enum(["single", "list"]);
   var comparisonRuleSchema = external_exports.enum(["normalized_equality"]);
   var executionModeSchema = external_exports.enum(["server", "local"]);
+  var changeDisplayModeSchema = external_exports.enum(["both", "new_only"]);
   var MIN_CHECK_INTERVAL_SEC = 3600;
   var DEFAULT_CHECK_INTERVAL_SEC = 86400;
   var checkIntervalSecSchema = external_exports.number().int().min(MIN_CHECK_INTERVAL_SEC).max(604800);
@@ -4227,6 +4228,7 @@
     executionMode: executionModeSchema,
     checkIntervalSec: external_exports.number().int().positive(),
     groupName: external_exports.string().nullable(),
+    changeDisplayMode: changeDisplayModeSchema,
     enabled: external_exports.boolean(),
     orderIndex: external_exports.number().int().nonnegative(),
     createdAt: external_exports.string(),
@@ -4246,6 +4248,7 @@
     executionMode: executionModeSchema.default("server"),
     checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
     groupName: groupNameSchema.default(null),
+    changeDisplayMode: changeDisplayModeSchema.default("both"),
     enabled: external_exports.boolean().default(true),
     orderIndex: external_exports.number().int().nonnegative().default(0),
     selections: external_exports.array(selectionInputSchema).min(1).max(50)
@@ -4259,6 +4262,7 @@
     executionMode: executionModeSchema.optional(),
     checkIntervalSec: checkIntervalSecSchema.optional(),
     groupName: groupNameSchema.optional(),
+    changeDisplayMode: changeDisplayModeSchema.optional(),
     enabled: external_exports.boolean().optional(),
     orderIndex: external_exports.number().int().nonnegative().optional(),
     selections: external_exports.array(selectionInputSchema).min(1).max(50).optional()

@@ -71,6 +71,7 @@ test.describe('end-to-end: Selection definition to RSS item', () => {
       executionMode: 'server',
       checkIntervalSec: 86400,
       groupName: null,
+      changeDisplayMode: 'both',
       enabled: true,
       orderIndex: 0,
       selections: [

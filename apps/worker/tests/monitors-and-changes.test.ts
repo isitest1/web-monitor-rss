@@ -178,6 +178,33 @@ describe('monitor result processing and change detection', () => {
     expect(rejectRes.status).toBe(400);
   });
 
+  it('defaults changeDisplayMode to "both" and lets it be updated via PUT', async () => {
+    expect(monitor.changeDisplayMode).toBe('both');
+
+    const admin = await loginAsAdmin(env);
+    const putRes = await admin.request(`/api/monitors/${monitor.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ changeDisplayMode: 'new_only' }),
+    });
+    expect(putRes.status).toBe(200);
+    const updated = await putRes.json<MonitorWithSelections>();
+    expect(updated.changeDisplayMode).toBe('new_only');
+  });
+
+  it('rejects an invalid changeDisplayMode value', async () => {
+    const admin = await loginAsAdmin(env);
+    const res = await admin.request('/api/monitors', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Invalid Mode Monitor',
+        url: 'https://example.com/invalid-mode',
+        changeDisplayMode: 'nonsense',
+        selections: [{ label: '値', selectorType: 'css', selector: '#v', extractionMode: 'text' }],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('exposes the monitor to the runner via GET /api/runner/monitors', async () => {
     const res = await runnerRequest('/api/runner/monitors');
     expect(res.status).toBe(200);

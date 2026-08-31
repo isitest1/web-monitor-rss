@@ -1,10 +1,11 @@
-import type { ExtractionMode, MonitorMode } from '@web-monitor/shared';
+import type { ChangeDisplayMode, ExtractionMode, MonitorMode } from '@web-monitor/shared';
 import { computePreview, type SelectionDraft } from './selection-draft.js';
 
 export interface PanelState {
   monitorName: string;
   monitorMode: MonitorMode;
   groupName: string | null;
+  changeDisplayMode: ChangeDisplayMode;
   selections: SelectionDraft[];
   statusMessage: string;
   saving: boolean;
@@ -18,6 +19,7 @@ export interface PanelCallbacks {
   onMonitorNameChange: (value: string) => void;
   onGroupNameChange: (value: string) => void;
   onMonitorModeChange: (mode: MonitorMode) => void;
+  onChangeDisplayModeChange: (mode: ChangeDisplayMode) => void;
   onLabelChange: (id: string, label: string) => void;
   onExtractionModeChange: (id: string, mode: ExtractionMode) => void;
   onRemove: (id: string) => void;
@@ -87,6 +89,25 @@ export function renderPanel(
   );
   modeLabel.appendChild(modeSelect);
   panel.appendChild(modeLabel);
+
+  const changeDisplayLabel = document.createElement('label');
+  changeDisplayLabel.textContent = 'RSS change display';
+  const changeDisplaySelect = document.createElement('select');
+  for (const [value, text] of [
+    ['both', 'Show old + new (Added/Removed)'],
+    ['new_only', 'Show new value only'],
+  ] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    if (value === state.changeDisplayMode) option.selected = true;
+    changeDisplaySelect.appendChild(option);
+  }
+  changeDisplaySelect.addEventListener('change', () =>
+    callbacks.onChangeDisplayModeChange(changeDisplaySelect.value as ChangeDisplayMode),
+  );
+  changeDisplayLabel.appendChild(changeDisplaySelect);
+  panel.appendChild(changeDisplayLabel);
 
   const hint = document.createElement('p');
   hint.className = 'hint';

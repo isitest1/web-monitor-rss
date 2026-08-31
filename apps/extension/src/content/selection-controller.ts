@@ -4,6 +4,7 @@ import {
   SelectionNavigator,
 } from '@web-monitor/selector-engine';
 import type {
+  ChangeDisplayMode,
   CreateMonitorRequest,
   ExtractionMode,
   MonitorMode,
@@ -19,6 +20,7 @@ export interface EditModeInit {
   monitorMode: MonitorMode;
   monitorName: string;
   groupName: string | null;
+  changeDisplayMode: ChangeDisplayMode;
   selections: SelectionDraft[];
 }
 
@@ -29,6 +31,7 @@ export class SelectionController {
   private monitorMode: MonitorMode = 'single';
   private monitorName = document.title.slice(0, 200);
   private groupName: string | null = null;
+  private changeDisplayMode: ChangeDisplayMode = 'both';
   private statusMessage = '';
   private saving = false;
   private active = false;
@@ -47,6 +50,7 @@ export class SelectionController {
       this.monitorMode = existing.monitorMode;
       this.monitorName = existing.monitorName;
       this.groupName = existing.groupName;
+      this.changeDisplayMode = existing.changeDisplayMode;
       this.selections = existing.selections;
     }
     this.overlay = createOverlayRoot();
@@ -250,6 +254,7 @@ export class SelectionController {
       monitorName: this.monitorName,
       monitorMode: this.monitorMode,
       groupName: this.groupName,
+      changeDisplayMode: this.changeDisplayMode,
       selections: this.selections,
       statusMessage: this.statusMessage,
       saving: this.saving,
@@ -266,6 +271,9 @@ export class SelectionController {
       onMonitorModeChange: (mode) => {
         this.monitorMode = mode;
         this.renderPanel();
+      },
+      onChangeDisplayModeChange: (mode) => {
+        this.changeDisplayMode = mode;
       },
       onLabelChange: (id, label) => {
         const selection = this.selections.find((s) => s.id === id);
@@ -323,6 +331,7 @@ export class SelectionController {
             url: location.href,
             monitorMode: this.monitorMode,
             groupName: this.groupName,
+            changeDisplayMode: this.changeDisplayMode,
             selections: selectionInputs,
           } satisfies UpdateMonitorRequest,
         })
@@ -336,6 +345,7 @@ export class SelectionController {
             executionMode: 'server',
             checkIntervalSec: 86400,
             groupName: this.groupName,
+            changeDisplayMode: this.changeDisplayMode,
             enabled: true,
             orderIndex: 0,
             selections: selectionInputs,

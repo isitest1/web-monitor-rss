@@ -106,6 +106,19 @@ function checkIntervalSelect(monitor: Monitor): string {
   return `<select class="check-interval-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
 }
 
+const CHANGE_DISPLAY_MODE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'both', label: 'Show old + new (Added/Removed)' },
+  { value: 'new_only', label: 'Show new value only' },
+];
+
+function changeDisplayModeSelect(monitor: Monitor): string {
+  const options = CHANGE_DISPLAY_MODE_OPTIONS.map(
+    (opt) =>
+      `<option value="${opt.value}" ${monitor.changeDisplayMode === opt.value ? 'selected' : ''}>${opt.label}</option>`,
+  ).join('');
+  return `<select class="change-display-mode-select" data-id="${escapeHtml(monitor.id)}">${options}</select>`;
+}
+
 function feedCell(feed: MonitorFeedInfo): string {
   if (feed.rssUrl) {
     return `<div class="actions-row">
@@ -160,6 +173,10 @@ ${healthBanner(systemState)}
       <select id="bulk-interval">${CHECK_INTERVAL_PRESETS.map((p) => `<option value="${p.seconds}">${p.label}</option>`).join('')}</select>
       <button class="secondary" id="bulk-interval-btn">Apply interval</button>
     </span>
+    <span class="bulk-group">
+      <select id="bulk-change-display-mode">${CHANGE_DISPLAY_MODE_OPTIONS.map((opt) => `<option value="${opt.value}">${opt.label}</option>`).join('')}</select>
+      <button class="secondary" id="bulk-change-display-mode-btn">Apply change display</button>
+    </span>
     <button class="danger-link" id="bulk-delete-btn">Delete selected Monitors</button>
   </div>
   <datalist id="group-options">${groupDatalistOptions}</datalist>
@@ -212,6 +229,7 @@ ${healthBanner(systemState)}
               <div class="cell-stack">
                 ${executionModeSelect(row.monitor)}
                 ${checkIntervalSelect(row.monitor)}
+                ${changeDisplayModeSelect(row.monitor)}
               </div>
             </td>
             <td>
@@ -347,6 +365,20 @@ document.getElementById('bulk-interval-btn')?.addEventListener('click', async ()
   );
   window.location.reload();
 });
+document.getElementById('bulk-change-display-mode-btn')?.addEventListener('click', async () => {
+  const ids = getSelectedIds();
+  const value = document.getElementById('bulk-change-display-mode').value;
+  await Promise.all(
+    ids.map((id) =>
+      fetch('/api/monitors/' + id, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({ changeDisplayMode: value }),
+      }),
+    ),
+  );
+  window.location.reload();
+});
 document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
   const ids = getSelectedIds();
   if (!confirm('Delete ' + ids.length + ' Monitor(s)? This also deletes their history.'))
@@ -420,6 +452,17 @@ document.querySelectorAll('.check-interval-select').forEach((select) => {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ checkIntervalSec: Number(select.value) }),
+    });
+    window.location.reload();
+  });
+});
+document.querySelectorAll('.change-display-mode-select').forEach((select) => {
+  select.addEventListener('change', async () => {
+    const id = select.getAttribute('data-id');
+    await fetch('/api/monitors/' + id, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+      body: JSON.stringify({ changeDisplayMode: select.value }),
     });
     window.location.reload();
   });

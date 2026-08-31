@@ -105,6 +105,7 @@ function buildMonitor(overrides: Partial<MonitorWithSelections> = {}): MonitorWi
     executionMode: 'local',
     checkIntervalSec: 3600,
     groupName: null,
+    changeDisplayMode: 'both',
     enabled: true,
     orderIndex: 0,
     createdAt: '2025-01-01T00:00:00.000Z',

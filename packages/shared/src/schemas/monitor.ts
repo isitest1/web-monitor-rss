@@ -10,6 +10,13 @@ export type ComparisonRule = z.infer<typeof comparisonRuleSchema>;
 export const executionModeSchema = z.enum(['server', 'local']);
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
 
+// How a change's description is rendered (§11): 'both' shows old and new
+// values (Added/Removed for list-mode Selections), 'new_only' shows just
+// the new value (only the added items, with no "Added:" prefix, for
+// list-mode; the new value as-is for scalar-mode).
+export const changeDisplayModeSchema = z.enum(['both', 'new_only']);
+export type ChangeDisplayMode = z.infer<typeof changeDisplayModeSchema>;
+
 // 1 hour floor: a prior incident had an hourly test cron crawl a small site
 // too aggressively, so every Monitor (server or local) is bounded below.
 export const MIN_CHECK_INTERVAL_SEC = 3600;
@@ -76,6 +83,7 @@ export const monitorSchema = z.object({
   executionMode: executionModeSchema,
   checkIntervalSec: z.number().int().positive(),
   groupName: z.string().nullable(),
+  changeDisplayMode: changeDisplayModeSchema,
   enabled: z.boolean(),
   orderIndex: z.number().int().nonnegative(),
   createdAt: z.string(),
@@ -99,6 +107,7 @@ export const createMonitorRequestSchema = z.object({
   executionMode: executionModeSchema.default('server'),
   checkIntervalSec: checkIntervalSecSchema.default(DEFAULT_CHECK_INTERVAL_SEC),
   groupName: groupNameSchema.default(null),
+  changeDisplayMode: changeDisplayModeSchema.default('both'),
   enabled: z.boolean().default(true),
   orderIndex: z.number().int().nonnegative().default(0),
   selections: z.array(selectionInputSchema).min(1).max(50),
@@ -114,6 +123,7 @@ export const updateMonitorRequestSchema = z.object({
   executionMode: executionModeSchema.optional(),
   checkIntervalSec: checkIntervalSecSchema.optional(),
   groupName: groupNameSchema.optional(),
+  changeDisplayMode: changeDisplayModeSchema.optional(),
   enabled: z.boolean().optional(),
   orderIndex: z.number().int().nonnegative().optional(),
   selections: z.array(selectionInputSchema).min(1).max(50).optional(),

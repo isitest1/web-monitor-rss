@@ -53,7 +53,7 @@
 - 選択内容のプレビュー
 - テキスト、HTML、リンクURL、画像URL、指定属性値の取得
 - 単一要素モードと繰り返し一覧モード
-- Monitor名、Feed、比較方法、抽出規則、有効・無効の設定
+- Monitor名、Feed、比較方法、抽出規則、RSS変更表示（旧値+新値／新しい値のみ）、有効・無効の設定
 - Monitorごとに設定可能な確認間隔（既定1日1回、最短1時間）と、サーバー側（GitHub Actions）／ローカル側（Chrome拡張機能のバックグラウンドタブ）の実行方式選択
 - 正確な実行時刻を前提としない運用
 - GitHub Actions上のPlaywrightによる取得
@@ -423,6 +423,7 @@ comparison_rule
 execution_mode           -- server または local（既定server）
 check_interval_sec       -- 確認間隔（秒）。既定86400、最短3600
 group_name               -- 任意の分類名（NULL=未分類）
+change_display_mode      -- both（旧値+新値、既定）または new_only（新値のみ）
 enabled
 order_index
 created_at
@@ -595,8 +596,8 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - channelのtitle、link、description、last build dateを設定する。
 - 変更イベントごとに一つのitemを作成する。
 - GUIDはurn:web-monitor:change:<id-or-uuid>形式の安定した値とする。
-- item titleにはMonitor名と変更種別を含める。ただし一覧（配列）モードのSelectionで新規項目が追加された変更に限り、その先頭項目の先頭にある日付らしき文字列と、それに続くタイトルらしき文字列を取り出せた場合は、Monitor名とその日付・タイトルをitem titleに用いる（例：`Monitor名: 2024-01-15 見出し`）。取り出せない場合は通常どおりMonitor名と変更種別のみのtitleとする。
-- descriptionには変更されたラベル、旧値、新値を含める。
+- item titleは、そのMonitorが監視するWebページのタイトル（Monitor名。既定ではMonitor登録時のdocument.title）のみとする。変更種別のsuffixや、本文（変更内容）から抽出した見出し・日付などの可変長テキストはtitleに含めない。本文相当の文字列をtitleに使うと、時々文字数が長すぎてRSSリーダーが固まることがあるため。稼働警告・回復のitem（システム用Feed）のみ、Monitor名を持たないため`System Alert`/`System Recovery`という固定のラベルをtitleとする。
+- descriptionの内容はMonitorごとの`change_display_mode`設定に従う。既定の`both`では、変更されたラベル、旧値、新値の両方を含める（一覧（配列）モードのSelectionでは追加分を`Added:`、削除分を`Removed:`として示す）。`new_only`では新しい値だけを示す。一覧（配列）モードのSelectionでは新規追加分の項目のみを`Added:`のprefixなしで示し（削除分は示さない）、単一値（scalar）モードのSelectionでは新しい値をそのまま示す（旧値との差分表示は行わない）。
 - linkは元ページへ向ける。
 - pubDateはRFC 822互換形式とする。
 - 既定では最新20件を返す。
@@ -623,11 +624,12 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - 連続失敗回数
 - 実行方式（サーバー／ローカル）の切り替え
 - 確認間隔の設定
+- RSS変更表示（`change_display_mode`：旧値+新値／新しい値のみ）の切り替え
 - グループ（任意の分類名）の設定と、グループによる絞り込み
 - 有効・無効の切り替え
 - 元ページを開く
 - 選択範囲を編集する（Chrome拡張機能のポップアップから対象ページを開いて編集する。Watchlist自体はSelectorの選び直しを行わない）
-- 複数Monitorを選択した一括操作（有効化・無効化・実行方式変更・確認間隔変更・削除）
+- 複数Monitorを選択した一括操作（有効化・無効化・実行方式変更・確認間隔変更・RSS変更表示モード変更・削除）
 - 手動確認を要求する
 - 変更履歴を表示する
 - RSS URLをコピーする
@@ -724,6 +726,7 @@ pnpm ciは、format確認、lint、型検査、unit test、build、安定したi
 - 拡張機能のDOM抽出とRunnerのPlaywright抽出の結果整合性（同じstatus code・正規化）
 - Monitor編集時、既存Selectionのidが保持され、編集していないSelectionが次回チェックで誤って変更ありと判定されないこと
 - 一覧（配列）差分表示（追加・削除）がRSSと管理画面で一致すること
+- Monitorごとの`change_display_mode`（both／new_only）に応じたRSS description内容の切り替え（一覧モードでのAdded限定表示、単一値モードでの新値のみ表示を含む）
 
 ## 15. GitHub Actions
 

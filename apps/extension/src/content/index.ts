@@ -66,6 +66,7 @@ async function bootstrap(): Promise<void> {
     monitorMode: monitor.monitorMode,
     monitorName: monitor.name,
     groupName: monitor.groupName,
+    changeDisplayMode: monitor.changeDisplayMode,
     selections: monitor.selections.map((selection) => resolveDraftFromSelection(selection)),
   });
 }
