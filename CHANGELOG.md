@@ -9,6 +9,14 @@ a version number.
 
 ## [Unreleased]
 
+### Added
+
+- The Chrome extension is now published as a prebuilt `.zip` on GitHub
+  Releases (tag `extension-v0.1.0`), so it can be installed without a local
+  build: download, unzip, and *Load unpacked*. The README carries a direct
+  download badge/link and revised install steps; building from source
+  remains documented as an alternative.
+
 ## 2026-08-12
 
 ### Added

@@ -6,6 +6,9 @@ A point-and-click "Distill"-style selector picks the exact element (or elements)
 
 [![CI](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml/badge.svg)](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+[![Download Chrome extension](https://img.shields.io/badge/Chrome_extension-download_.zip-1a73e8.svg?logo=googlechrome&logoColor=white)](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip)
+
+> **Install the Chrome extension:** [**⬇ download the prebuilt `.zip`**](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip), unzip it, then load the folder at `chrome://extensions/` → *Developer mode* → *Load unpacked*. Full steps: [Installing the Chrome extension](#installing-the-chrome-extension-not-on-the-web-store).
 
 > **Status:** this is a personal, single-user project — see [Scope](#scope) before deciding whether it fits your use case.
 
@@ -95,21 +98,26 @@ Full step-by-step setup (Dev Container, Cloudflare D1/Worker, GitHub secrets, RS
 
 ## Installing the Chrome extension (not on the Web Store)
 
-**This extension is not published on the Chrome Web Store.** You install it yourself as an unpacked extension, and you'll need to repeat this on every machine you use it from:
+**This extension is not published on the Chrome Web Store.** Chrome only accepts non-store extensions through *Load unpacked*, so there is no true one-click store install — but you don't have to build it yourself. You will need to repeat the install on every machine you use it from.
 
-1. Build it:
-   ```
-   pnpm --filter @web-monitor/extension build
-   ```
-   This produces `apps/extension/dist/`.
+### Quickest: download the prebuilt package
+
+1. Download **[`web-monitor-rss-extension-v0.1.0.zip`](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip)** from the [latest release](https://github.com/isitest1/web-monitor-rss/releases/latest) and unzip it — you'll get a `web-monitor-rss-extension` folder.
 2. In Chrome, go to `chrome://extensions/`.
 3. Turn on **Developer mode** (top right).
-4. Click **Load unpacked** and select the `apps/extension/dist` folder.
+4. Click **Load unpacked** and select the unzipped `web-monitor-rss-extension` folder.
 5. Pin the extension to your toolbar.
 6. Open the extension's **options page** and enter your Worker's API base URL and your Extension API token (generated in [Quick start](#quick-start) step 3). Neither of these ships with the extension by default — you must configure them the first time before anything else will work.
-7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it matches `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `apps/extension/manifest.json`, so the same built `dist/` gets the same ID on every machine; you shouldn't need to update this more than once.)
+7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it matches `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `manifest.json`, so the same package gets the same ID on every machine; you shouldn't need to update this more than once.)
 
-Because it's unpacked and not store-distributed, Chrome won't auto-update it — after pulling changes, re-run the build step and click the refresh icon for the extension on `chrome://extensions/`.
+### Alternative: build from source
+
+1. Run `pnpm --filter @web-monitor/extension build` — this produces `apps/extension/dist/`.
+2. Follow steps 2–7 above, selecting the `apps/extension/dist` folder in step 4.
+
+The release `.zip` is exactly this build output, reproducible from the `extension-v0.1.0` tag (`sha256` is listed on the release page).
+
+Because it's unpacked and not store-distributed, Chrome won't auto-update it — after pulling changes (or downloading a newer release `.zip`), reload the extension with the refresh icon on `chrome://extensions/`.
 
 ## Usage
 
