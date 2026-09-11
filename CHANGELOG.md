@@ -17,6 +17,17 @@ a version number.
   download badge/link and revised install steps; building from source
   remains documented as an alternative.
 
+## 2026-09-11
+
+### Added
+
+- For a single-value (scalar) Selection shown with the "old + new" change
+  display mode, the RSS description and admin change-history table now
+  highlight just the edited portion of the text — strikethrough for the
+  removed part, bold for the added part — instead of a plain
+  `[old → new]` bracket. Repeating-list (Added/Removed) diffs are
+  unaffected.
+
 ## 2026-08-12
 
 ### Added

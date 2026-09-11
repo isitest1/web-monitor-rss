@@ -62,7 +62,7 @@ This table reflects each project's public documentation as of this writing, not 
 - Per-monitor check interval (default once a day, minimum once an hour) and execution mode (GitHub Actions server-side, or a local Chrome background tab).
 - Baseline-on-first-success semantics: the first successful check sets the baseline and never generates a change item by itself; only real, deduplicated changes do.
 - Full check/change history, current-state tracking, and per-monitor error state (`SELECTOR_NOT_FOUND`, `BLOCKED`, `RATE_LIMITED`, `TIMEOUT`, and more) — failed checks never overwrite the last known-good value or get recorded as a content change.
-- RSS 2.0 output per feed with stable GUIDs, `ETag`/`Last-Modified`/304 support, and rotatable, hashed (never plaintext-stored) delivery tokens.
+- RSS 2.0 output per feed with stable GUIDs, `ETag`/`Last-Modified`/304 support, and rotatable, hashed (never plaintext-stored) delivery tokens. For a single-value change shown with the "old + new" display mode, only the edited portion of the text is highlighted (struck-through old text, bold new text) — not the whole before/after value.
 - A separate system feed for operational alerts: consecutive check failures, and the independent heartbeat watchdog's stale/recovered events — never mixed into your content-change feed.
 - Cookie-session-protected admin dashboard (Watchlist) for managing monitors, groups, execution mode, check intervals, bulk actions, manual re-checks, and RSS token rotation/revocation — separate auth from the extension's and the runner's own tokens.
 
