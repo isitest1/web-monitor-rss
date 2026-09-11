@@ -1,8 +1,7 @@
 import {
   diffArrayValues,
-  diffScalarText,
+  formatChangeLineHtml,
   type Change,
-  type ChangeDisplayMode,
   type Check,
   type Monitor,
 } from '@web-monitor/shared';
@@ -12,56 +11,6 @@ import { escapeHtml, escapeHtmlMultiline } from './escape.js';
 function formatDate(iso: string | null): string {
   if (!iso) return '-';
   return new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Tokyo' });
-}
-
-function formatValue(value: string | string[] | undefined): string {
-  if (value === undefined) return '(none)';
-  return Array.isArray(value) ? value.join(', ') : value;
-}
-
-/** Mirrors apps/worker/src/rss/generate.ts's formatScalarDiff so a single-value edit shows just the changed portion in context, not the whole before/after text. */
-function formatScalarDiff(oldValue: string, newValue: string): string {
-  const diff = diffScalarText(oldValue, newValue);
-  if (!diff.changed) return newValue;
-  const core =
-    diff.removed && diff.added
-      ? `${diff.removed} → ${diff.added}`
-      : diff.added
-        ? `Added: ${diff.added}`
-        : `Removed: ${diff.removed}`;
-  return `${diff.contextBefore}[${core}]${diff.contextAfter}`;
-}
-
-/** Mirrors apps/worker/src/rss/generate.ts's formatChangeLine so the admin history and RSS descriptions agree on how a change reads. */
-function formatChangeLine(
-  label: string,
-  oldValue: string | string[] | undefined,
-  newValue: string | string[] | undefined,
-  mode: ChangeDisplayMode,
-): string {
-  if (Array.isArray(newValue)) {
-    const { added, removed } = diffArrayValues(
-      Array.isArray(oldValue) ? oldValue : undefined,
-      newValue,
-    );
-    let diffText: string;
-    if (mode === 'new_only') {
-      diffText = added.length > 0 ? added.join('\n') : '(no new items)';
-    } else {
-      const parts: string[] = [];
-      if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
-      if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
-      diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
-    }
-    return `${label}: ${diffText}`;
-  }
-  const diffText =
-    mode === 'new_only'
-      ? formatValue(newValue)
-      : typeof oldValue === 'string' && typeof newValue === 'string'
-        ? formatScalarDiff(oldValue, newValue)
-        : `${formatValue(oldValue)} → ${formatValue(newValue)}`;
-  return `${label}: ${diffText}`;
 }
 
 /** Mirrors apps/worker/src/rss/generate.ts's imageTags: <img> tags for a Selection's captured images, linked back to the source page, display-only. */
@@ -125,13 +74,13 @@ export function monitorHistoryPage(monitor: Monitor, checks: Check[], changes: C
                     )
                   : newVal?.images;
                 return (
-                  escapeHtmlMultiline(
-                    formatChangeLine(
-                      label,
-                      oldVal?.displayValue,
-                      newVal?.displayValue,
-                      monitor.changeDisplayMode,
-                    ),
+                  formatChangeLineHtml(
+                    label,
+                    oldVal?.displayValue,
+                    newVal?.displayValue,
+                    true,
+                    monitor.changeDisplayMode,
+                    escapeHtmlMultiline,
                   ) + imageTags(images, monitor.url)
                 );
               })

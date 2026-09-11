@@ -597,7 +597,7 @@ GET    /health                  -- 稼働状態（healthy / stale）と最終正
 - 変更イベントごとに一つのitemを作成する。
 - GUIDはurn:web-monitor:change:<id-or-uuid>形式の安定した値とする。
 - item titleは、そのMonitorが監視するWebページのタイトル（Monitor名。既定ではMonitor登録時のdocument.title）のみとする。変更種別のsuffixや、本文（変更内容）から抽出した見出し・日付などの可変長テキストはtitleに含めない。本文相当の文字列をtitleに使うと、時々文字数が長すぎてRSSリーダーが固まることがあるため。稼働警告・回復のitem（システム用Feed）のみ、Monitor名を持たないため`System Alert`/`System Recovery`という固定のラベルをtitleとする。
-- descriptionの内容はMonitorごとの`change_display_mode`設定に従う。既定の`both`では、変更されたラベル、旧値、新値の両方を含める（一覧（配列）モードのSelectionでは追加分を`Added:`、削除分を`Removed:`として示す）。`new_only`では新しい値だけを示す。一覧（配列）モードのSelectionでは新規追加分の項目のみを`Added:`のprefixなしで示し（削除分は示さない）、単一値（scalar）モードのSelectionでは新しい値をそのまま示す（旧値との差分表示は行わない）。
+- descriptionの内容はMonitorごとの`change_display_mode`設定に従う。既定の`both`では、変更されたラベル、旧値、新値の両方を含める（一覧（配列）モードのSelectionでは追加分を`Added:`、削除分を`Removed:`として示す）。`new_only`では新しい値だけを示す。一覧（配列）モードのSelectionでは新規追加分の項目のみを`Added:`のprefixなしで示し（削除分は示さない）、単一値（scalar）モードのSelectionでは新しい値をそのまま示す（旧値との差分表示は行わない）。単一値（scalar）モードのSelectionが`both`で変更差分を示す場合、旧値全体・新値全体を並べるのではなく、共通する前後の文脈を残したまま実際に変わった部分だけを取り出し、旧側は打消し線付きの赤、新側は太字の緑でハイライトする（管理画面の変更履歴でも同じハイライトを使う）。一覧（配列）モードの`Added:`/`Removed:`表示は項目単位の差分であり、この文字単位ハイライトの対象外とする。
 - linkは元ページへ向ける。
 - pubDateはRFC 822互換形式とする。
 - 既定では最新20件を返す。

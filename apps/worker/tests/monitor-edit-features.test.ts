@@ -473,9 +473,15 @@ describe('scalar (text-mode) change description shows only the changed portion i
       }),
     });
 
+    // The changed digit is highlighted: strikethrough red for the removed
+    // "1", bold green for the added "2".
+    const highlightedCore =
+      '[<span style="color:#b91c1c;text-decoration:line-through;">1</span> → ' +
+      '<strong style="color:#15803d;">2</strong>]';
+
     const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
     const xml = await rssRes.text();
-    expect(xml).toContain('[1 → 2]');
+    expect(xml).toContain(highlightedCore);
     // The unchanged tail is long enough to be truncated with an ellipsis
     // rather than repeated in full.
     expect(xml).not.toContain('お早めにご検討ください');
@@ -483,7 +489,7 @@ describe('scalar (text-mode) change description shows only the changed portion i
     const admin = await loginAsAdmin(env);
     const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
     const historyHtml = await historyRes.text();
-    expect(historyHtml).toContain('[1 → 2]');
+    expect(historyHtml).toContain(highlightedCore);
     expect(historyHtml).not.toContain('お早めにご検討ください');
   });
 });

@@ -1,6 +1,6 @@
 import {
   diffArrayValues,
-  diffScalarText,
+  formatChangeLineHtml,
   DEFAULT_CHECK_INTERVAL_SEC,
   type Change,
   type ChangeDisplayMode,
@@ -117,12 +117,13 @@ function buildDescription(change: Change, link: string, mode: ChangeDisplayMode)
     const oldValue = oldById.get(id);
     const newValue = newById.get(id);
     const label = newValue?.label ?? oldValue?.label ?? id;
-    const line = formatChangeLine(
+    const line = formatChangeLineHtml(
       label,
       oldValue?.displayValue,
       newValue?.displayValue,
       ids.length > 1,
       mode,
+      escapeXmlMultiline,
     );
     const images = Array.isArray(newValue?.displayValue)
       ? addedListItemImages(
@@ -131,73 +132,9 @@ function buildDescription(change: Change, link: string, mode: ChangeDisplayMode)
           newValue.itemImages,
         )
       : newValue?.images;
-    return escapeXmlMultiline(line) + imageTags(images, link);
+    return line + imageTags(images, link);
   });
   return lines.join('<br/>');
-}
-
-function formatDisplay(value: string | string[] | undefined): string {
-  if (value === undefined) return '(none)';
-  return Array.isArray(value) ? value.join(', ') : value;
-}
-
-/**
- * Renders a scalar (single-value) Selection's change as the edited portion
- * in context, instead of the whole before/after text — trims the shared
- * prefix/suffix via diffScalarText so a one-sentence edit in a long
- * paragraph doesn't force the reader to spot the difference themselves.
- */
-function formatScalarDiff(oldValue: string, newValue: string): string {
-  const diff = diffScalarText(oldValue, newValue);
-  if (!diff.changed) return newValue;
-  const core =
-    diff.removed && diff.added
-      ? `${diff.removed} → ${diff.added}`
-      : diff.added
-        ? `Added: ${diff.added}`
-        : `Removed: ${diff.removed}`;
-  return `${diff.contextBefore}[${core}]${diff.contextAfter}`;
-}
-
-/**
- * For a list-mode (array-valued) Selection, shows which entries were added/
- * removed instead of the whole before/after list; for a scalar Selection,
- * shows just the edited portion in context (§ Feature: 差分表示改善) —
- * both avoid dumping the whole before/after value for a change that only
- * touched a small part of it. In 'new_only' mode (per-Monitor setting), the
- * removed/old side is dropped entirely: list-mode shows just the added
- * items with no "Added:" prefix, and scalar-mode shows just the new value.
- */
-function formatChangeLine(
-  label: string,
-  oldValue: string | string[] | undefined,
-  newValue: string | string[] | undefined,
-  showLabel: boolean,
-  mode: ChangeDisplayMode,
-): string {
-  if (Array.isArray(newValue)) {
-    const { added, removed } = diffArrayValues(
-      Array.isArray(oldValue) ? oldValue : undefined,
-      newValue,
-    );
-    let diffText: string;
-    if (mode === 'new_only') {
-      diffText = added.length > 0 ? added.join('\n') : '(no new items)';
-    } else {
-      const parts: string[] = [];
-      if (added.length > 0) parts.push(`Added: ${added.join('\n')}`);
-      if (removed.length > 0) parts.push(`Removed: ${removed.join('\n')}`);
-      diffText = parts.length > 0 ? parts.join('\n') : '(order changed)';
-    }
-    return showLabel ? `${label}: ${diffText}` : diffText;
-  }
-  const diffText =
-    mode === 'new_only'
-      ? formatDisplay(newValue)
-      : typeof oldValue === 'string' && typeof newValue === 'string'
-        ? formatScalarDiff(oldValue, newValue)
-        : `${formatDisplay(oldValue)} → ${formatDisplay(newValue)}`;
-  return showLabel ? `${label}: ${diffText}` : diffText;
 }
 
 export interface RssGenerationResult {

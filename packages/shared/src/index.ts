@@ -5,6 +5,7 @@ export * from './normalize.js';
 export * from './constants.js';
 export * from './diff-array.js';
 export * from './diff-scalar.js';
+export * from './change-line.js';
 export * from './schemas/feed.js';
 export * from './schemas/selection.js';
 export * from './schemas/monitor.js';
