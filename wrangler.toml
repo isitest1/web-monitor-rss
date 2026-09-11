@@ -1,0 +1,48 @@
+# Root-level Wrangler config — this is what the README's "Deploy to
+# Cloudflare" button provisions a *new* self-hoster's own deployment from.
+# It is separate from, and does not replace:
+#   - apps/worker/wrangler.toml (public template used for local dev/test —
+#     `wrangler dev`, vitest-pool-workers)
+#   - apps/worker/wrangler.production.toml (Kohei's own real production
+#     config, gitignored)
+# See QUICKSTART.md and SETUP.md for how the three relate.
+#
+# It is deliberately generic: database_id is a placeholder (the Deploy
+# button provisions a brand-new D1 database and fills in the real ID),
+# ADMIN_ALLOWED_ORIGIN/GITHUB_REPO_OWNER/GITHUB_REPO_NAME are placeholders
+# the deployer fills in (same pattern as apps/worker/wrangler.toml), and
+# EXTENSION_ALLOWED_ORIGIN is a real, non-placeholder default because the
+# Chrome extension's ID is pinned via a public key in apps/extension/
+# manifest.json — every install of the same extension package gets the same
+# ID, so every deployer can use this value unchanged.
+name = "web-monitor-rss-worker"
+main = "apps/worker/src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "web-monitor-rss"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "apps/worker/migrations"
+
+[triggers]
+# Watchdog cron (§8.6): independent of GitHub Actions. Runs hourly and only
+# reads system_state timestamps; it never contacts monitored sites.
+crons = ["0 * * * *"]
+
+[vars]
+ADMIN_SESSION_TTL_SEC = "31536000"
+DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
+ADMIN_ALLOWED_ORIGIN = "https://YOUR_WORKER_SUBDOMAIN.workers.dev"
+EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh"
+# Where a newly created Monitor's immediate-baseline-check workflow_dispatch
+# is sent. Not secret; GITHUB_DISPATCH_TOKEN below is what authorizes it.
+GITHUB_REPO_OWNER = "YOUR_GITHUB_USERNAME"
+GITHUB_REPO_NAME = "YOUR_REPOSITORY_NAME"
+GITHUB_WORKFLOW_FILE = "daily-monitor.yml"
+
+# Secrets (set via `wrangler secret put` after the first deploy, never
+# committed — see QUICKSTART.md step 4):
+# ADMIN_LOGIN_SECRET, EXTENSION_API_TOKEN, RUNNER_API_TOKEN, SESSION_SIGNING_SECRET,
+# GITHUB_DISPATCH_TOKEN (optional; enables immediate baseline checks on Monitor creation)

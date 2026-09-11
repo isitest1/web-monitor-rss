@@ -21,6 +21,13 @@ a version number.
 
 ### Added
 
+- A **Deploy to Cloudflare** button (README) that copies this repository to
+  a new self-hoster's own GitHub account and provisions a Worker + D1
+  database for it in one click. A root-level `wrangler.toml` and root
+  `package.json` `deploy`/`db:migrations:apply` scripts make this work
+  despite the pnpm-workspace monorepo layout. **[QUICKSTART.md](QUICKSTART.md)**
+  is a new, terse (~10 minute) setup guide for this path; the existing
+  [SETUP.md](SETUP.md) remains for local development and now points to it.
 - For a single-value (scalar) Selection shown with the "old + new" change
   display mode, the RSS description and admin change-history table now
   highlight just the edited portion of the text — strikethrough for the

@@ -6,7 +6,10 @@ A point-and-click "Distill"-style selector picks the exact element (or elements)
 
 [![CI](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml/badge.svg)](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/isitest1/web-monitor-rss)
 [![Download Chrome extension](https://img.shields.io/badge/Chrome_extension-download_.zip-1a73e8.svg?logo=googlechrome&logoColor=white)](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip)
+
+> **Just want to use it?** Click **Deploy to Cloudflare** above, then follow **[QUICKSTART.md](QUICKSTART.md)** (~10 minutes, no local setup).
 
 > **Install the Chrome extension:** [**⬇ download the prebuilt `.zip`**](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip), unzip it, then load the folder at `chrome://extensions/` → *Developer mode* → *Load unpacked*. Full steps: [Installing the Chrome extension](#installing-the-chrome-extension-not-on-the-web-store).
 
@@ -88,13 +91,9 @@ See [CLAUDE.md](CLAUDE.md) for the full technical specification this project is 
 
 ## Quick start
 
-Full step-by-step setup (Dev Container, Cloudflare D1/Worker, GitHub secrets, RSS token flow, heartbeat verification) lives in **[SETUP.md](SETUP.md)**. In short:
+**Just want to use it?** Click the **Deploy to Cloudflare** button near the top of this README, then follow **[QUICKSTART.md](QUICKSTART.md)** — click the button, add a few secrets, load the Chrome extension, done in about 10 minutes, no local checkout needed.
 
-1. Open the repo in the provided Dev Container (Node.js, pnpm, Playwright, and Wrangler are preinstalled there — nothing to install on your host machine).
-2. `wrangler login`, create a D1 database, and fill in `apps/worker/wrangler.production.toml` (copied from the placeholder `apps/worker/wrangler.toml`) with your own database ID, allowed origins, and GitHub repo — see [SETUP.md §7](SETUP.md#7-cloudflare-d1の作成) for why the two files are split.
-3. Generate and register the Admin/Extension/Runner secrets with `wrangler secret put`.
-4. `pnpm --filter @web-monitor/worker run deploy:production` to deploy the Worker; add `MONITOR_API_BASE_URL` and `RUNNER_API_TOKEN` as GitHub Actions secrets so the daily workflow can reach it.
-5. Build and load the Chrome extension — see the next section, this part is manual.
+**Want to develop or modify it instead?** Full step-by-step setup (Dev Container, Cloudflare D1/Worker, GitHub secrets, RSS token flow, heartbeat verification) lives in **[SETUP.md](SETUP.md)**.
 
 ## Installing the Chrome extension (not on the Web Store)
 
@@ -154,7 +153,7 @@ See [CLAUDE.md](CLAUDE.md) for the full engineering ground rules this project fo
 
 ## Scope
 
-This is a **personal, single-user** project by design — no multi-tenant accounts, no billing, no general public sign-up. It monitors only public pages that don't require login. If you deploy it yourself, you get your own isolated Cloudflare/GitHub/D1 stack; nothing is shared with anyone else's deployment. Issues and pull requests are welcome, but this isn't run as a hosted service for others to sign up to.
+This is a **personal, single-user** project by design — no multi-tenant accounts, no billing, no general public sign-up. It monitors only public pages that don't require login. If you deploy it yourself, you get your own isolated Cloudflare/GitHub/D1 stack; nothing is shared with anyone else's deployment. Issues and pull requests are welcome, but this isn't run as a hosted service for others to sign up to, and there is no plan to turn it into one — the "Deploy to Cloudflare" button exists so *you* can run your own instance, not so this project runs it for you.
 
 ## License
 
