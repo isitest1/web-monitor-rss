@@ -21,6 +21,13 @@ a version number.
 
 ### Added
 
+- Prepared the Chrome Web Store submission (Phase 2 of the OSS release
+  plan): a real extension icon replacing the placeholder navy square
+  (`apps/extension/icons/`, referenced by `manifest.json`), a more
+  descriptive `manifest.json` `description`, and a companion
+  [web-monitor-rss-support](https://github.com/isitest1/web-monitor-rss-support)
+  site (support page + privacy policy, JA/EN) with the listing copy,
+  screenshots, and promo image needed for submission.
 - A **Deploy to Cloudflare** button (README) that copies this repository to
   a new self-hoster's own GitHub account and provisions a Worker + D1
   database for it in one click. A root-level `wrangler.toml` and root
