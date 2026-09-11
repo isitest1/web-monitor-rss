@@ -107,7 +107,7 @@ See [CLAUDE.md](CLAUDE.md) for the full technical specification this project is 
 4. Click **Load unpacked** and select the unzipped `web-monitor-rss-extension` folder.
 5. Pin the extension to your toolbar.
 6. Open the extension's **options page** and enter your Worker's API base URL and your Extension API token (generated in [Quick start](#quick-start) step 3). Neither of these ships with the extension by default — you must configure them the first time before anything else will work.
-7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it matches `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `manifest.json`, so the same package gets the same ID on every machine; you shouldn't need to update this more than once.)
+7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it's included in `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `manifest.json`, so the same package gets the same ID on every machine; you shouldn't need to update this more than once. `EXTENSION_ALLOWED_ORIGIN` accepts a comma-separated list, so it's fine to also list a Chrome Web Store install's own id — that install has a different, but likewise fixed, id since the Store strips the `key` field.)
 
 ### Alternative: build from source
 

@@ -28,6 +28,12 @@ a version number.
   [web-monitor-rss-support](https://github.com/isitest1/web-monitor-rss-support)
   site (support page + privacy policy, JA/EN) with the listing copy,
   screenshots, and promo image needed for submission.
+- `EXTENSION_ALLOWED_ORIGIN` now accepts a comma-separated list of
+  `chrome-extension://` origins, so a single Worker can accept both an
+  unpacked install (fixed id from `manifest.json`'s `key` field) and a
+  Chrome Web Store install (Chrome assigns its own id once `key` is
+  stripped for Store submission — still one fixed id per Store listing,
+  just a different one than the unpacked install's).
 - A **Deploy to Cloudflare** button (README) that copies this repository to
   a new self-hoster's own GitHub account and provisions a Worker + D1
   database for it in one click. A root-level `wrangler.toml` and root

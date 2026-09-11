@@ -11,10 +11,16 @@
 # button provisions a brand-new D1 database and fills in the real ID),
 # ADMIN_ALLOWED_ORIGIN/GITHUB_REPO_OWNER/GITHUB_REPO_NAME are placeholders
 # the deployer fills in (same pattern as apps/worker/wrangler.toml), and
-# EXTENSION_ALLOWED_ORIGIN is a real, non-placeholder default because the
-# Chrome extension's ID is pinned via a public key in apps/extension/
-# manifest.json — every install of the same extension package gets the same
-# ID, so every deployer can use this value unchanged.
+# EXTENSION_ALLOWED_ORIGIN is a real, non-placeholder default (comma-
+# separated list — see corsMiddleware) because the extension has two
+# distribution channels with two different, but each globally fixed,
+# extension ids: kbmnhacencnkiepglogohgpkpboglmgh when loaded unpacked
+# (pinned via a public key in apps/extension/manifest.json), and
+# cmeiflbjigiaalobggjdhcaekdbcakah once installed from the Chrome Web
+# Store (which strips the "key" field and assigns its own id instead —
+# still the same id for every Store install of this one listing). Every
+# deployer can use this value unchanged regardless of which way their
+# users install the extension.
 name = "web-monitor-rss-worker"
 main = "apps/worker/src/index.ts"
 compatibility_date = "2025-01-01"
@@ -35,7 +41,7 @@ crons = ["0 * * * *"]
 ADMIN_SESSION_TTL_SEC = "31536000"
 DEFAULT_HEARTBEAT_THRESHOLD_SEC = "93600"
 ADMIN_ALLOWED_ORIGIN = "https://YOUR_WORKER_SUBDOMAIN.workers.dev"
-EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh"
+EXTENSION_ALLOWED_ORIGIN = "chrome-extension://kbmnhacencnkiepglogohgpkpboglmgh,chrome-extension://cmeiflbjigiaalobggjdhcaekdbcakah"
 # Where a newly created Monitor's immediate-baseline-check workflow_dispatch
 # is sent. Not secret; GITHUB_DISPATCH_TOKEN below is what authorizes it.
 GITHUB_REPO_OWNER = "YOUR_GITHUB_USERNAME"

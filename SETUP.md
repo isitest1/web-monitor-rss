@@ -290,7 +290,7 @@ MacのChromeからDev Container内のファイルを直接選択しにくい場�
 
 拡張機能には、Worker APIへ接続するためのExtension APIトークンを設定します。トークン値は拡張機能の設定画面へ入力し、ソースコードへ直接記載しないでください。
 
-`chrome://extensions/`に表示される拡張機能ID（`chrome-extension://` に続く英数字）を確認し、apps/worker/wrangler.production.tomlの`EXTENSION_ALLOWED_ORIGIN`を`chrome-extension://<拡張機能ID>`へ更新してください。この値と一致しないoriginからのAPI要求はCORSで拒否されます。管理画面を別ドメインで配信する場合は、同様に`ADMIN_ALLOWED_ORIGIN`も実際のoriginへ更新してください（いずれも公開commitされるwrangler.tomlではなく、wrangler.production.tomlへ設定します）。デプロイ後は`pnpm --filter @web-monitor/worker run deploy:production`を使用してください。
+`chrome://extensions/`に表示される拡張機能ID（`chrome-extension://` に続く英数字）を確認し、apps/worker/wrangler.production.tomlの`EXTENSION_ALLOWED_ORIGIN`を`chrome-extension://<拡張機能ID>`へ更新してください。この値に含まれないoriginからのAPI要求はCORSで拒否されます。`EXTENSION_ALLOWED_ORIGIN`はカンマ区切りで複数値を指定できるため（`chrome-extension://<ID1>,chrome-extension://<ID2>`）、Load unpackedとChrome Web Store版など、拡張機能IDが異なる複数の入手経路を同時に許可することもできます。管理画面を別ドメインで配信する場合は、同様に`ADMIN_ALLOWED_ORIGIN`も実際のoriginへ更新してください（いずれも公開commitされるwrangler.tomlではなく、wrangler.production.tomlへ設定します）。デプロイ後は`pnpm --filter @web-monitor/worker run deploy:production`を使用してください。
 
 ## 14. Visual Selectorの確認
 
