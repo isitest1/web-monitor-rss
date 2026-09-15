@@ -169,8 +169,8 @@ test.describe('end-to-end: Selection definition to RSS item', () => {
       // repeating both full values, and highlights it: strikethrough red for
       // the removed text, bold green for the added text.
       expect(changedXml).toContain(
-        '[<span style="color:#b91c1c;text-decoration:line-through;">初期の</span> → ' +
-          '<strong style="color:#15803d;">更新された</strong>]見出しです',
+        '<span style="color:#b91c1c;text-decoration:line-through;">初期の</span>' +
+          '<strong style="color:#15803d;">更新された</strong>見出しです',
       );
       expect(changedXml).toContain(`urn:web-monitor:change:${changedResult.changeId}`);
 

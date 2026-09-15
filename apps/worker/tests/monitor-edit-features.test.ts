@@ -396,6 +396,11 @@ describe('scalar (text-mode) change description shows only the changed portion i
   let monitor: MonitorWithSelections;
   let selectionId: string;
 
+  const countOccurrences = (haystack: string, needle: string): number =>
+    haystack.split(needle).length - 1;
+  const firstDescription = (xml: string): string =>
+    /<description>([\s\S]*?)<\/description>/.exec(xml.split('<item>')[1] ?? '')?.[1] ?? '';
+
   const longTail =
     '。この商品は大変人気があり、在庫がなくなり次第終了となりますのでお早めにご検討ください。';
 
@@ -473,23 +478,23 @@ describe('scalar (text-mode) change description shows only the changed portion i
       }),
     });
 
-    // The changed digit is highlighted: strikethrough red for the removed
-    // "1", bold green for the added "2".
+    // Only the changed number is highlighted: strikethrough red for the
+    // removed "1000", bold green for the added "2000".
     const highlightedCore =
-      '[<span style="color:#b91c1c;text-decoration:line-through;">1</span> → ' +
-      '<strong style="color:#15803d;">2</strong>]';
+      '<span style="color:#b91c1c;text-decoration:line-through;">1000</span>' +
+      '<strong style="color:#15803d;">2000</strong>';
 
     const rssRes = await testApp().request(`/rss/${feed.rssToken}.xml`, {}, env);
     const xml = await rssRes.text();
     expect(xml).toContain(highlightedCore);
-    // The unchanged tail is long enough to be truncated with an ellipsis
-    // rather than repeated in full.
-    expect(xml).not.toContain('お早めにご検討ください');
+    // The untouched sentence after the edit is kept as context, but shown
+    // once — not repeated as part of a whole old value and a whole new one.
+    expect(countOccurrences(firstDescription(xml), 'お早めにご検討ください')).toBe(1);
 
     const admin = await loginAsAdmin(env);
     const historyRes = await admin.request(`/monitors/${monitor.id}/history`);
     const historyHtml = await historyRes.text();
     expect(historyHtml).toContain(highlightedCore);
-    expect(historyHtml).not.toContain('お早めにご検討ください');
+    expect(countOccurrences(historyHtml, 'お早めにご検討ください')).toBe(1);
   });
 });
