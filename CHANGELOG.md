@@ -17,6 +17,35 @@ a version number.
   download badge/link and revised install steps; building from source
   remains documented as an alternative.
 
+## 2026-09-15
+
+### Changed
+
+- Scalar (single-value) change diffs are now computed line by line and then
+  word by word, instead of trimming the common prefix and suffix. The old
+  approach could describe exactly one contiguous changed region, so a page
+  that edited two separate spots — or dropped one entry from a list and
+  shifted everything below it — reported every line between the first and
+  the last difference as changed, even though nearly all of them were
+  identical on both sides. A description now shows only the changed lines,
+  keeping five lines of context either side and collapsing the rest into a
+  `… (N unchanged lines)` marker, and marks only the words that actually
+  changed inside an edited line. Japanese text is tokenized with
+  `Intl.Segmenter`, since word boundaries there cannot come from
+  whitespace. Measured against the change items sitting in the two feeds
+  that prompted this, the share of description text marked as changed fell
+  from 99% to 15%, and the feeds themselves shrank to 54% of their previous
+  size.
+- A page that keeps its wording but moves its line breaks no longer reads as
+  a wholesale replacement. When hardly any line matches a line, the whole
+  value is diffed at the word level instead, where every run of whitespace
+  compares equal to every other — the same reason comparison values collapse
+  line breaks, since a reflow alone is not a content change.
+- Values too large to diff line by line within the Worker's CPU budget fall
+  back to the previous prefix/suffix rendering rather than failing.
+- Repeating-list (Added/Removed) diffs are deliberately unaffected: they
+  remain an exact-match set difference of whole entries.
+
 ## 2026-09-11
 
 ### Added
