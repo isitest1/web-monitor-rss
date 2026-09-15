@@ -28,8 +28,8 @@ const CONTEXT_LINES = 5;
  */
 const MAX_LINES = 4000;
 const MAX_LINE_EDIT_DISTANCE = 600;
-const MAX_TOKENS_PER_LINE = 2000;
-const MAX_TOKEN_EDIT_DISTANCE = 200;
+const MAX_TOKENS_PER_LINE = 20000;
+const MAX_TOKEN_EDIT_DISTANCE = 1000;
 /** Pairing is O(removed × added); past this many combinations we skip it. */
 const MAX_PAIRING_COMBINATIONS = 400;
 /** A removed/added line pair is only shown as one edited line above this similarity. */
@@ -244,9 +244,20 @@ function similarity(aTokens: string[], bTokens: string[]): number {
 }
 
 /**
- * Word-level diff of two corresponding lines. Returns undefined when the
- * lines are too long to diff within budget, so the caller can fall back to
- * showing them as separate removed/added lines.
+ * Every run of whitespace compares equal to every other, so a page that
+ * only reflowed its markup — turning a space into a line break, or the
+ * reverse — is not reported as an edit. The comparison value collapses
+ * whitespace for the same reason: a reflow alone is not a content change.
+ */
+function tokenComparisonKey(token: string): string {
+  return /^\s+$/.test(token) ? ' ' : token;
+}
+
+/**
+ * Word-level diff of two corresponding lines. Unchanged tokens are taken
+ * from the new side, so its spacing and line breaks are what gets rendered.
+ * Returns undefined when the lines are too long to diff within budget, so
+ * the caller can fall back to showing them as separate removed/added lines.
  */
 function diffTokens(oldLine: string, newLine: string): TokenPart[] | undefined {
   const oldTokens = tokenizeLine(oldLine);
@@ -254,7 +265,11 @@ function diffTokens(oldLine: string, newLine: string): TokenPart[] | undefined {
   if (oldTokens.length > MAX_TOKENS_PER_LINE || newTokens.length > MAX_TOKENS_PER_LINE) {
     return undefined;
   }
-  const edits = diffSequence(oldTokens, newTokens, MAX_TOKEN_EDIT_DISTANCE);
+  const edits = diffSequence(
+    oldTokens.map(tokenComparisonKey),
+    newTokens.map(tokenComparisonKey),
+    MAX_TOKEN_EDIT_DISTANCE,
+  );
   if (!edits) return undefined;
 
   const parts: TokenPart[] = [];
@@ -264,7 +279,7 @@ function diffTokens(oldLine: string, newLine: string): TokenPart[] | undefined {
     else parts.push({ type, text });
   };
   for (const edit of edits) {
-    if (edit.type === 'equal') append('equal', oldTokens[edit.aIndex] ?? '');
+    if (edit.type === 'equal') append('equal', newTokens[edit.bIndex] ?? '');
     else if (edit.type === 'remove') append('removed', oldTokens[edit.aIndex] ?? '');
     else append('added', newTokens[edit.bIndex] ?? '');
   }
@@ -307,11 +322,17 @@ function rowsForChangedBlock(removed: string[], added: string[]): TextDiffRow[] 
   const rows: TextDiffRow[] = [];
   const partnerOf = new Map<number, number>();
 
-  // One line replaced by one line has only one possible correspondence, so
-  // it is always shown as an edit in place — even for a wholesale
-  // replacement, where the word-level diff simply degrades to "all of the
-  // old, then all of the new" on a single line.
-  const unambiguous = removed.length === 1 && added.length === 1;
+  // When one side of the block is a single unit there is only one possible
+  // correspondence, so it is always shown as an edit in place. This also
+  // covers a value whose markup gained or lost its line breaks between
+  // checks — one unbroken run of prose against many lines — where matching
+  // line against line finds nothing and the word-level diff over the pair
+  // is the only thing that can locate the real edit.
+  const unambiguous = removed.length === 1 || added.length === 1;
+  if (unambiguous && removed.length > 0 && added.length > 0) {
+    const parts = diffTokens(removed.join('\n'), added.join('\n'));
+    if (parts) return [{ type: 'modified', parts }];
+  }
 
   if (removed.length * added.length <= MAX_PAIRING_COMBINATIONS) {
     const removedTokens = removed.map(tokenizeLine);
@@ -319,7 +340,7 @@ function rowsForChangedBlock(removed: string[], added: string[]): TextDiffRow[] 
     const claimed = new Set<number>();
     for (let i = 0; i < removed.length; i++) {
       let bestIndex = -1;
-      let bestScore = unambiguous ? -1 : MIN_PAIRING_SIMILARITY;
+      let bestScore = MIN_PAIRING_SIMILARITY;
       for (let j = 0; j < added.length; j++) {
         if (claimed.has(j)) continue;
         const score = similarity(removedTokens[i] ?? [], addedTokens[j] ?? []);
@@ -391,6 +412,18 @@ export function diffDisplayText(oldValue: string, newValue: string): TextDiff {
   if (!edits) return { changed: true, rows: [], overBudget: true };
 
   const blocks = groupIntoBlocks(edits, oldLines, newLines);
+
+  // Hardly any line survived intact. That happens when the page kept its
+  // wording but changed where its line breaks fall, so every unit boundary
+  // moved and matching line against line finds almost nothing; a word-level
+  // diff over the whole value is then the only thing that can locate the
+  // real edit, and it ignores which kind of whitespace separates the words.
+  const alignedLines = blocks.reduce((total, block) => total + block.equal.length, 0);
+  if (alignedLines * 2 < Math.min(oldLines.length, newLines.length)) {
+    const parts = diffTokens(oldValue, newValue);
+    if (parts) return { changed: true, rows: [{ type: 'modified', parts }], overBudget: false };
+  }
+
   const rows: TextDiffRow[] = [];
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];

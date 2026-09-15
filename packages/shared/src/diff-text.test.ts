@@ -165,10 +165,61 @@ describe('diffDisplayText', () => {
   });
 
   it('shows unrelated removals and additions as whole lines when a block holds several', () => {
-    const diff = diffDisplayText(lines('alpha', 'beta'), lines('gamma', 'delta', 'epsilon'));
+    const diff = diffDisplayText(
+      lines('head', 'alpha', 'beta', 'tail'),
+      lines('head', 'gamma', 'delta', 'epsilon', 'tail'),
+    );
     expect(rowsOfType(diff.rows, 'removed').map(textOf)).toEqual(['alpha', 'beta']);
     expect(rowsOfType(diff.rows, 'added').map(textOf)).toEqual(['gamma', 'delta', 'epsilon']);
     expect(rowsOfType(diff.rows, 'modified')).toEqual([]);
+  });
+
+  it('still lines up two values that disagree about where their line breaks fall', () => {
+    // Seen in a real feed: the monitored page kept its wording but started
+    // rendering the section with line breaks, so one side arrived as one
+    // unbroken run of prose and the other as many lines.
+    const before = 'First sentence here. Second sentence here. Third sentence here.';
+    const after = 'First sentence here.\nSecond sentence changed.\nThird sentence here.';
+    const diff = diffDisplayText(before, after);
+
+    expect(diff.overBudget).toBe(false);
+    const modified = diff.rows.filter((row) => row.type === 'modified');
+    expect(modified).toHaveLength(1);
+    const parts = modified[0]?.type === 'modified' ? modified[0].parts : [];
+    expect(parts.filter((part) => part.type === 'added').map((part) => part.text)).toEqual([
+      'changed',
+    ]);
+    expect(rowsOfType(diff.rows, 'context').map(textOf)).toEqual([
+      'First sentence here.',
+      'Third sentence here.',
+    ]);
+  });
+
+  it('locates the real edit when the page kept its wording but moved its line breaks', () => {
+    // Seen in a real feed: the monitored section started rendering with
+    // line breaks where it previously ran on. Matching line against line
+    // finds almost nothing, so the whole value is diffed word by word, and
+    // whitespace of any kind compares equal so the reflow itself is not
+    // reported.
+    const before = 'alpha beta gamma OLD delta epsilon';
+    const after = 'alpha beta\ngamma NEW delta\nepsilon';
+    const diff = diffDisplayText(before, after);
+
+    expect(diff.overBudget).toBe(false);
+    expect(diff.rows).toHaveLength(1);
+    const parts = diff.rows[0]?.type === 'modified' ? diff.rows[0].parts : [];
+    expect(parts.filter((part) => part.type === 'removed').map((part) => part.text)).toEqual([
+      'OLD',
+    ]);
+    expect(parts.filter((part) => part.type === 'added').map((part) => part.text)).toEqual(['NEW']);
+    // Unchanged tokens come from the new side, so its line breaks are what
+    // gets rendered.
+    expect(
+      parts
+        .filter((part) => part.type === 'equal')
+        .map((part) => part.text)
+        .join(''),
+    ).toBe('alpha beta\ngamma  delta\nepsilon');
   });
 
   it('reports over budget instead of spending unbounded CPU on two wholly different values', () => {
