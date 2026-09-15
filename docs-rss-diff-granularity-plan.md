@@ -89,8 +89,9 @@ guid は不変なのでリーダーが再通知することもない。
 デプロイ手順は CLAUDE.md §2 のとおり
 （`wrangler d1 migrations apply --remote` + `:production` スクリプトで deploy）。
 
-## 未決事項
+## 対象外（決定 2026-09-15）
 
-- list モード (`diffArrayValues`) も同時に直すか。
-  推奨は「同時に直す」（似た項目をペアリングして語単位ハイライト、作業量 +3 割程度）。
-  今回報告された 2 フィードはどちらも scalar なので、後回しにする選択肢もある。
+- **list モード (`diffArrayValues`) は変更しない。** 完全一致の集合差分のままとし、
+  項目内の 1 文字変更が「項目まるごと削除 + まるごと追加」になる挙動も現状維持。
+  今回の改修は scalar（`displayValue` が文字列）の Selection のみを対象とする。
+  `formatChangeLineHtml` の配列分岐には手を入れないこと。
