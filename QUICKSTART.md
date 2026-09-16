@@ -27,7 +27,7 @@ You'll need a [Cloudflare account](https://dash.cloudflare.com/sign-up) (free ti
 
 6. In your repo's **Actions** tab, open the `daily-monitor` workflow and run it once manually (*Run workflow*). Confirm it finishes green — this is the scheduled Playwright runner that will check your monitors going forward.
 
-7. Download the prebuilt Chrome extension from this repo's [latest release](https://github.com/isitest1/web-monitor-rss/releases/latest), unzip it, and load it via `chrome://extensions/` → *Developer mode* → *Load unpacked* (see the main [README](README.md#installing-the-chrome-extension-not-on-the-web-store) for details). Open its options page and enter your Worker URL and the `EXTENSION_API_TOKEN` value from step 4.
+7. Install the Chrome extension from the **[Chrome Web Store](https://chromewebstore.google.com/detail/web-monitor-rss-visual-se/cmeiflbjigiaalobggjdhcaekdbcakah)** (see the main [README](README.md#installing-the-chrome-extension) for a manual `.zip`/*Load unpacked* alternative). Open its options page and enter your Worker URL and the `EXTENSION_API_TOKEN` value from step 4.
 
 8. Open the extension on any page you want to watch, select an element, and save it as a Monitor. Then open your Worker URL in a browser, log in (the password is the `ADMIN_LOGIN_SECRET` value from step 4), and copy the Monitor's RSS URL into your feed reader.
 

@@ -7,11 +7,11 @@ A point-and-click "Distill"-style selector picks the exact element (or elements)
 [![CI](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml/badge.svg)](https://github.com/isitest1/web-monitor-rss/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/isitest1/web-monitor-rss)
-[![Download Chrome extension](https://img.shields.io/badge/Chrome_extension-download_.zip-1a73e8.svg?logo=googlechrome&logoColor=white)](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip)
+[![Available in the Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-install-1a73e8.svg?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/web-monitor-rss-visual-se/cmeiflbjigiaalobggjdhcaekdbcakah)
 
 > **Just want to use it?** Click **Deploy to Cloudflare** above, then follow **[QUICKSTART.md](QUICKSTART.md)** (~10 minutes, no local setup).
 
-> **Install the Chrome extension:** [**⬇ download the prebuilt `.zip`**](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip), unzip it, then load the folder at `chrome://extensions/` → *Developer mode* → *Load unpacked*. Full steps: [Installing the Chrome extension](#installing-the-chrome-extension-not-on-the-web-store).
+> **Install the Chrome extension:** [**install from the Chrome Web Store**](https://chromewebstore.google.com/detail/web-monitor-rss-visual-se/cmeiflbjigiaalobggjdhcaekdbcakah). Full steps (and a manual `.zip`/*Load unpacked* alternative): [Installing the Chrome extension](#installing-the-chrome-extension).
 
 > **Status:** this is a personal, single-user project — see [Scope](#scope) before deciding whether it fits your use case.
 
@@ -25,7 +25,7 @@ A point-and-click "Distill"-style selector picks the exact element (or elements)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
-- [Installing the Chrome extension (not on the Web Store)](#installing-the-chrome-extension-not-on-the-web-store)
+- [Installing the Chrome extension](#installing-the-chrome-extension)
 - [Usage](#usage)
 - [Security & privacy principles](#security--privacy-principles)
 - [Tech stack](#tech-stack)
@@ -95,28 +95,37 @@ See [CLAUDE.md](CLAUDE.md) for the full technical specification this project is 
 
 **Want to develop or modify it instead?** Full step-by-step setup (Dev Container, Cloudflare D1/Worker, GitHub secrets, RSS token flow, heartbeat verification) lives in **[SETUP.md](SETUP.md)**.
 
-## Installing the Chrome extension (not on the Web Store)
+## Installing the Chrome extension
 
-**This extension is not published on the Chrome Web Store.** Chrome only accepts non-store extensions through *Load unpacked*, so there is no true one-click store install — but you don't have to build it yourself. You will need to repeat the install on every machine you use it from.
+### Recommended: Chrome Web Store
 
-### Quickest: download the prebuilt package
+Install from the **[Chrome Web Store listing](https://chromewebstore.google.com/detail/web-monitor-rss-visual-se/cmeiflbjigiaalobggjdhcaekdbcakah)** — one click, and Chrome keeps it updated automatically. After installing:
+
+1. Pin the extension to your toolbar.
+2. Open its **options page** and enter your Worker's API base URL and your Extension API token (generated in [Quick start](#quick-start) step 3). Neither of these ships with the extension by default — you must configure them the first time before anything else will work.
+
+The default `wrangler.toml` template already allow-lists this Store listing's extension id in `EXTENSION_ALLOWED_ORIGIN`, so a fresh self-hosted deploy accepts it out of the box.
+
+### Alternative: download the prebuilt `.zip` (Load unpacked)
+
+Useful if you'd rather not use the Store listing, or want the exact build from a specific release tag.
 
 1. Download **[`web-monitor-rss-extension-v0.1.0.zip`](https://github.com/isitest1/web-monitor-rss/releases/latest/download/web-monitor-rss-extension-v0.1.0.zip)** from the [latest release](https://github.com/isitest1/web-monitor-rss/releases/latest) and unzip it — you'll get a `web-monitor-rss-extension` folder.
 2. In Chrome, go to `chrome://extensions/`.
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and select the unzipped `web-monitor-rss-extension` folder.
 5. Pin the extension to your toolbar.
-6. Open the extension's **options page** and enter your Worker's API base URL and your Extension API token (generated in [Quick start](#quick-start) step 3). Neither of these ships with the extension by default — you must configure them the first time before anything else will work.
-7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it's included in `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `manifest.json`, so the same package gets the same ID on every machine; you shouldn't need to update this more than once. `EXTENSION_ALLOWED_ORIGIN` accepts a comma-separated list, so it's fine to also list a Chrome Web Store install's own id — that install has a different, but likewise fixed, id since the Store strips the `key` field.)
+6. Open the extension's **options page** and enter your Worker's API base URL and your Extension API token, as above.
+7. Note the extension ID Chrome assigns it (shown on `chrome://extensions/`), and confirm it's included in `EXTENSION_ALLOWED_ORIGIN` in `apps/worker/wrangler.production.toml` — a mismatch is rejected by CORS. (This repo pins a stable ID via a public key in `manifest.json`, so the same package gets the same ID on every machine; you shouldn't need to update this more than once. `EXTENSION_ALLOWED_ORIGIN` accepts a comma-separated list, so it's fine to also list the Chrome Web Store install's own id — that install has a different, but likewise fixed, id since the Store strips the `key` field.)
+
+Because it's unpacked and not store-distributed, Chrome won't auto-update this install path — after pulling changes (or downloading a newer release `.zip`), reload the extension with the refresh icon on `chrome://extensions/`.
 
 ### Alternative: build from source
 
 1. Run `pnpm --filter @web-monitor/extension build` — this produces `apps/extension/dist/`.
-2. Follow steps 2–7 above, selecting the `apps/extension/dist` folder in step 4.
+2. Follow steps 2–7 of the *Load unpacked* section above, selecting the `apps/extension/dist` folder in step 4.
 
 The release `.zip` is exactly this build output, reproducible from the `extension-v0.1.0` tag (`sha256` is listed on the release page).
-
-Because it's unpacked and not store-distributed, Chrome won't auto-update it — after pulling changes (or downloading a newer release `.zip`), reload the extension with the refresh icon on `chrome://extensions/`.
 
 ## Usage
 
